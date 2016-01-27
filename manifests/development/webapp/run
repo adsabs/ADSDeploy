@@ -1,0 +1,8 @@
+#!/bin/bash
+
+cd /vagrant
+
+pip install -r web-requirements.txt
+pip install -r dev-web-requirements.txt
+
+gunicorn wsgi:application
