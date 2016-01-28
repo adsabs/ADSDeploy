@@ -1,8 +1,17 @@
+"""
+Integration Test Worker
 
+carries out integration tests
+"""
+
+import git
+import subprocess
 
 from .. import app
 from generic import RabbitMQWorker
 
+ADS_REX_URL = 'https://github.com/adsabs/adsrex.git'
+ADS_REX_TMP = '/tmp/adsrex'
 
 class IntegrationTestWorker(RabbitMQWorker):
     """
@@ -32,7 +41,17 @@ class IntegrationTestWorker(RabbitMQWorker):
         
         # do something with the payload
         result = dict(msg)        
-        
+
+        # Step 1: download the repository that has the tests
+        git.Repo.clone_from(ADS_REX_URL, ADS_REX_TMP)
+
+        # Step 2: run the tests via subprocess
+        script = ['pushd', ADS_REX_TMP, ';', 'py.test', ';', 'popd']
+        p = subprocess.Popen(script)
+        p.wait()
+
+        # Step 3: cleanup
+
         # publish the results into the queue
         self.logger.info('Publishing to queue: {}'.format(self.publish_topic))
         self.publish(result)

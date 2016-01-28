@@ -69,10 +69,7 @@ class TestIntegrationTestWorker(unittest.TestCase):
 
         test_worker = IntegrationTestWorker(params=params)
         test_worker.run()
-        test_worker.channel.stop_consuming()
         test_worker.connection.close()
-
-        # Worker updates the database for the relevant entries
 
         # Worker sends a packet to the next worker
         with MiniRabbit(RABBITMQ_URL) as w:
@@ -85,9 +82,11 @@ class TestIntegrationTestWorker(unittest.TestCase):
         self.assertEqual(m_in, 0)
         self.assertEqual(m_out, 1)
 
+        example_packet['test_passed'] = True
         self.assertEqual(
             p,
             example_packet
         )
 
-        # Detach worker
+        # Worker updates the database for the relevant entries
+        # Check entry here

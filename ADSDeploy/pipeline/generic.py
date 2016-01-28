@@ -31,7 +31,6 @@ class RabbitMQWorker(object):
         if 'publish' in self.params and self.params['publish']:
             self.publish_topic = self.params['publish']
 
-
     def setup_logging(self, level='DEBUG'):
         """
         Sets up the generic logging of the worker
@@ -82,7 +81,6 @@ class RabbitMQWorker(object):
             self.logger.error(sys.exc_info())
             raise Exception(sys.exc_info())
 
-
     def publish_to_error_queue(self, message, exchange=None, routing_key=None,
                                **kwargs):
         """
@@ -102,7 +100,6 @@ class RabbitMQWorker(object):
             routing_key = self.params.get('error', 'ads.orcid.error')
 
         self.publish(message, topic=routing_key, properties=kwargs['header_frame'])
-
 
     def forward(self, message, topic=None, **kwargs):
         """
@@ -125,8 +122,7 @@ class RabbitMQWorker(object):
         self.fwd_channel.basic_publish(exchange=self.fwd_exchange,
                                    routing_key=topic or self.fwd_topic,
                                    body=message)
-        
-        
+
     def publish(self, message, topic=None, **kwargs):
         """
         Publishes messages to the queue. Uses the generic template for the
@@ -156,7 +152,6 @@ class RabbitMQWorker(object):
         self.channel.basic_publish(exchange=self.exchange,
                                    routing_key=topic or self.publish_topic,
                                    body=message)
-        
 
     def subscribe(self, callback, **kwargs):
         """
@@ -170,21 +165,22 @@ class RabbitMQWorker(object):
 
         if 'subscribe' in self.params and self.params['subscribe']:
             self.logger.debug('Subscribing to: {0}'.format(self.params['subscribe']))
-            self.channel.basic_consume(callback, queue=self.params['subscribe'], **kwargs)
 
             if not self.params.get('TEST_RUN', False):
-                self.logger.debug('Worker consuming from queue: {0}'.format(
-                    self.params['subscribe']))
+                self.channel.basic_consume(callback, queue=self.params['subscribe'], **kwargs)
+                self.logger.debug('Worker consuming from queue: {0}'
+                    .format(self.params['subscribe']))
                 self.channel.start_consuming()
+            else:
+                msg = self.channel.basic_get(queue=self.params['subscribe'])
+                self.on_message(self.channel, *msg)
 
-    
     def process_payload(self, payload, 
                         channel=None, 
                         method_frame=None, 
                         header_frame=None):
         """Please provide your own implementation"""
         raise NotImplementedError("Missing impl of process_payload")
-        
 
     def on_message(self, channel, method_frame, header_frame, body):
         """
@@ -221,7 +217,6 @@ class RabbitMQWorker(object):
 
         # Send delivery acknowledgement
         self.channel.basic_ack(delivery_tag=method_frame.delivery_tag)
-
 
     def run(self):
         """
