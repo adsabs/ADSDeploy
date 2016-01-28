@@ -82,7 +82,7 @@ class TestIntegrationTestWorker(unittest.TestCase):
         self.assertEqual(m_in, 0)
         self.assertEqual(m_out, 1)
 
-        example_packet['test_passed'] = True
+        example_packet['test passed'] = True
         self.assertEqual(
             p,
             example_packet

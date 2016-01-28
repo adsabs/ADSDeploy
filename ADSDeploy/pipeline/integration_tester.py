@@ -5,13 +5,16 @@ carries out integration tests
 """
 
 import git
+import shutil
 import subprocess
 
 from .. import app
 from generic import RabbitMQWorker
+from ..utils import ChangeDirectory
 
 ADS_REX_URL = 'https://github.com/adsabs/adsrex.git'
 ADS_REX_TMP = '/tmp/adsrex'
+
 
 class IntegrationTestWorker(RabbitMQWorker):
     """
@@ -46,11 +49,18 @@ class IntegrationTestWorker(RabbitMQWorker):
         git.Repo.clone_from(ADS_REX_URL, ADS_REX_TMP)
 
         # Step 2: run the tests via subprocess
-        script = ['pushd', ADS_REX_TMP, ';', 'py.test', ';', 'popd']
-        p = subprocess.Popen(script)
-        p.wait()
+        script = ['py.test']
+        with ChangeDirectory(ADS_REX_TMP):
+            p = subprocess.Popen(script, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+
+        out, err = p.communicate()
+        if 'ERRORS' or 'FAILURES' in out:
+            result['test passed'] = False
+        else:
+            result['test passed'] = True
 
         # Step 3: cleanup
+        shutil.rmtree(ADS_REX_TMP)
 
         # publish the results into the queue
         self.logger.info('Publishing to queue: {}'.format(self.publish_topic))

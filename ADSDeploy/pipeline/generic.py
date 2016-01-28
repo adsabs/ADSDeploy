@@ -169,7 +169,7 @@ class RabbitMQWorker(object):
             if not self.params.get('TEST_RUN', False):
                 self.channel.basic_consume(callback, queue=self.params['subscribe'], **kwargs)
                 self.logger.debug('Worker consuming from queue: {0}'
-                    .format(self.params['subscribe']))
+                                  .format(self.params['subscribe']))
                 self.channel.start_consuming()
             else:
                 msg = self.channel.basic_get(queue=self.params['subscribe'])
