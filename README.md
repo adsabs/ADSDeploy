@@ -2,7 +2,7 @@
 Deployment, testing, and GUI pipeline for the ADS application tier
 =======
 [![Build Status](https://travis-ci.org/adsabs/ADSDeploy.svg)](https://travis-ci.org/adsabs/ADSDeploy)
-[![Coverage Status](https://coveralls.io/repos/adsabs/ADSDeploy/badge.svg)](https://coveralls.io/r/adsabs/ADSDeploy)
+[![Coverage Status](https://coveralls.io/repos/github/adsabs/ADSDeploy/badge.svg?branch=master)](https://coveralls.io/github/adsabs/ADSDeploy?branch=master)
 
 dev setup - vagrant (docker)
 ============================

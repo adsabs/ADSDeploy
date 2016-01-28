@@ -7,22 +7,6 @@ AWS_REGION = 'us-east-1'
 AWS_ACCESS_KEY = 'redacted'
 AWS_SECRET_KEY = 'redacted'
 
-WATCHED_REPOS = [
-    'adsws',
-    'solr-service',
-    'export_service',
-    'graphics_service',
-    'recommender_service',
-    'citation_helper_service',
-    'metrics_service',
-    'vis-services',
-    'biblib-service',
-    'orcid-service',
-    'myads',
-    'object_service',
-    'harbour-service'
-]
-
 DEPLOY_LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
