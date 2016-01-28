@@ -1,7 +1,7 @@
 """
 Test utilities
 """
-import os
+
 import hmac
 import json
 import mock
@@ -13,8 +13,7 @@ from ADSDeploy.webapp.models import db, Packet
 from ADSDeploy.webapp.views import GithubListener
 from stub_data.stub_webapp import github_payload, payload_tag
 from ADSDeploy.webapp.utils import get_boto_session
-from ADSDeploy.webapp.exceptions import TimeOutError, NoSignatureInfo, InvalidSignature, \
-    UnknownRepoError
+from ADSDeploy.webapp.exceptions import NoSignatureInfo, InvalidSignature
 from flask.ext.testing import TestCase
 
 
@@ -128,10 +127,6 @@ class TestStaticMethodUtilities(TestCase):
         r = FakeRequest()
         r.data = github_payload.replace('"name": "adsws"', '"name": "mission-control"')
 
-        # Unknown repos should raise UnknownRepoError
-        with self.assertRaises(UnknownRepoError):
-            GithubListener.parse_github_payload(r)
-
         # Modify the data such that the payload refers to a known repo,
         # assert that the returned models.Commit contains the expected data
         r.data = github_payload
@@ -177,33 +172,6 @@ class TestStaticMethodUtilities(TestCase):
                 key,
                 c,
                 msg='Key "{}" not found in "{}"'.format(key, c)
-            )
-
-    def test_database_entry_from_payload(self):
-        """
-        Tests that a database entry is made based on the payload received
-        from the parsed GitHub webhook
-        """
-
-        payload = {
-            'repository': 'important-service',
-            'commit': 'da89fuhds',
-            'environment': 'staging',
-            'author': 'author',
-            'tag': 'da89fuhds',
-        }
-
-        GithubListener.push_database(payload)
-
-        entry = db.session.query(Packet).filter(Packet.commit == 'da89fuhds').one()
-        for key in payload:
-            self.assertEqual(
-                payload[key],
-                getattr(entry, key),
-                msg='Expected entry {} is not equal to actual entry {}'.format(
-                    payload[key],
-                    getattr(entry, key)
-                )
             )
 
     @mock.patch('ADSDeploy.webapp.views.MiniRabbit')
