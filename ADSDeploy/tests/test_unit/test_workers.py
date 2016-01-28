@@ -21,6 +21,8 @@ from ADSDeploy import app
 from ADSDeploy.tests import test_base
 from ADSDeploy.models import Base
 from ADSDeploy.pipeline.example import ExampleWorker
+from ADSDeploy.pipeline.deploy import Deploy, BeforeDeploy
+
 
 class TestWorkers(test_base.TestUnit):
     """
@@ -48,7 +50,10 @@ class TestWorkers(test_base.TestUnit):
         worker.process_payload({u'foo': u'bar', u'baz': [1,2]})
         worker.publish.assert_called_with({u'foo': u'bar', u'baz': [1,2]})
     
-    
+    def test_deploy_BeforeDeploy(self):
+        """Checks the worker has access to the AWS"""
+        worker = BeforeDeploy()
+        worker.process_payload({'application': 'sandbox', 'environment': 'adsws'}) 
 
 if __name__ == '__main__':
     unittest.main()        

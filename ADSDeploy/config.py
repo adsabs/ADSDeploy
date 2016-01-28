@@ -27,14 +27,35 @@ POLL_INTERVAL = 15  # per-worker poll interval (to check health) in seconds.
 EXCHANGE = 'ADSDeploy'
 
 WORKERS = {
+    'deploy.BeforeDeploy': {
+        'concurrency': 1,
+        'subscribe': 'ads.deploy.before_deploy',
+        'publish': 'ads.deploy.deploy',
+        'error': 'ads.deploy.error',
+        'durable': True
+    },
+    'deploy.Deploy': {
+        'concurrency': 1,
+        'subscribe': 'ads.deploy.deploy',
+        'publish': 'ads.deploy.test',
+        'error': 'ads.deploy.error',
+        'durable': True
+    },
+    'deploy.AfterDeploy': {
+        'concurrency': 1,
+        'subscribe': 'ads.deploy.after_deploy',
+        'publish': None,
+        'error': 'ads.deploy.error',
+        'durable': True
+    },
     'errors.ErrorHandler': {
-        'subscribe': None,
-        'exchange': None,
+        'subscribe': 'ads.deploy.error',
         'publish': None,
         'durable': False
     }
 }
 
+EB_DEPLOY_HOME = '/dvt/workspace/eb-deploy'
 
 # Web Application configuration parameters
 WEBAPP_URL = '172.17.0.1:9000'
