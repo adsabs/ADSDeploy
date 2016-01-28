@@ -78,7 +78,12 @@ class MiniRabbit(object):
         :return: dict
         """
         packet = self.channel.basic_get(queue=queue, no_ack=True)
-        return json.loads(packet[2])
+        try:
+            packet = json.loads(packet[2])
+        except:
+            pass
+
+        return packet
 
     def clear_queue(self, queue):
         """
@@ -89,7 +94,7 @@ class MiniRabbit(object):
         """
         self.channel.queue_purge(queue=queue)
 
-    def delete_queue(self, queue):
+    def delete_queue(self, queue, exchange=None):
         """
         Delete specified queue
 
@@ -97,9 +102,9 @@ class MiniRabbit(object):
         :type queue: str
         """
         self.channel.queue_delete(queue=queue)
-        self.channel.exchange_delete(exchange=queue)
+        self.channel.exchange_delete(exchange=exchange if not None else queue)
 
-    def make_queue(self, queue):
+    def make_queue(self, queue, exchange=None):
         """
         Create a queue, its exchange, and route
 
@@ -107,7 +112,7 @@ class MiniRabbit(object):
         :type queue: str
         """
         self.channel.exchange_declare(
-            exchange=queue,
+            exchange=exchange if not None else queue,
             passive=False,
             durable=False,
             internal=False,
@@ -124,7 +129,7 @@ class MiniRabbit(object):
 
         self.channel.queue_bind(
             queue=queue,
-            exchange=queue,
+            exchange=exchange if not None else queue,
             routing_key=queue
         )
 

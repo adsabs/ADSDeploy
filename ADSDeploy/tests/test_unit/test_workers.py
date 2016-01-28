@@ -22,6 +22,7 @@ from ADSDeploy.tests import test_base
 from ADSDeploy.models import Base
 from ADSDeploy.pipeline.example import ExampleWorker
 
+
 class TestWorkers(test_base.TestUnit):
     """
     Tests the GenericWorker's methods
@@ -47,7 +48,6 @@ class TestWorkers(test_base.TestUnit):
         worker = ExampleWorker()
         worker.process_payload({u'foo': u'bar', u'baz': [1,2]})
         worker.publish.assert_called_with({u'foo': u'bar', u'baz': [1,2]})
-    
     
 
 if __name__ == '__main__':

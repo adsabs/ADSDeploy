@@ -40,7 +40,7 @@ class RabbitMQWorker(object):
         :return: no return
         """
 
-        return utils.setup_logging(__file__, self.__class__.__name__)
+        return utils.setup_logging(__file__, self.__class__.__name__, level=level)
 
     def connect(self, url, confirm_delivery=False):
         """
@@ -198,6 +198,7 @@ class RabbitMQWorker(object):
         :return: no return
         """
 
+        self.logger.debug('Obtaining message from queue')
         message = json.loads(body)
         try:
             self.logger.debug('Running on message')
@@ -228,6 +229,5 @@ class RabbitMQWorker(object):
         and starts it consuming messages.
         :return: no return
         """
-
         self.connect(self.params['RABBITMQ_URL'])
         self.subscribe(self.on_message)

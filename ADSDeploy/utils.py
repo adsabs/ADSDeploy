@@ -87,7 +87,7 @@ def load_module(filename):
     from_object(d, res)
     return res
 
-def setup_logging(file_, name_, level='WARN'):
+def setup_logging(file_, name_, level='DEBUG'):
     """
     Sets up generic logging to file with rotating files on disk
 
