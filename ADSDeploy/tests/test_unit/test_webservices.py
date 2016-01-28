@@ -38,17 +38,15 @@ class TestEndpoints(TestCase):
         self.assertStatus(r, 400)  # No signature given
 
 
-    @mock.patch('ADSDeploy.webapp.views.GithubListener.push_database')
     @mock.patch('ADSDeploy.webapp.views.GithubListener.push_rabbitmq')
     @mock.patch('ADSDeploy.webapp.views.GithubListener.verify_github_signature')
-    def test_githublistener_forwards_message(self, mocked_gh, mocked_rabbit, mocked_db):
+    def test_githublistener_forwards_message(self, mocked_gh, mocked_rabbit):
         """
         Test that the GitHub listener passes the posted message to the
         relevant worker.
         """
 
         mocked_gh.return_value = True
-        mocked_db.return_value = True
 
         url = url_for('githublistener')
 
@@ -70,7 +68,6 @@ class TestEndpoints(TestCase):
         }
 
         mocked_rabbit.assert_called_once_with(expected_packet)
-        mocked_db.assert_called_once_with(expected_packet)
 
     @mock.patch('ADSDeploy.webapp.views.GithubListener')
     def test_rabbitmqlistener_forwards_message(self, mocked_gh):

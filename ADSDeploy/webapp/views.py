@@ -2,16 +2,16 @@
 Views
 """
 
-import pika
+import hashlib
 import hmac
 import json
-import hashlib
 
+import pika
+from ADSDeploy.config import RABBITMQ_URL
 from flask import current_app, request, abort
 from flask.ext.restful import Resource
-from .models import db, Packet
-from .exceptions import NoSignatureInfo, InvalidSignature, UnknownRepoError
-from ADSDeploy.config import RABBITMQ_URL
+
+from .exceptions import NoSignatureInfo, InvalidSignature
 
 
 class MiniRabbit(object):
@@ -207,28 +207,6 @@ class GithubListener(Resource):
             )
 
     @staticmethod
-    def push_database(payload):
-        """
-        Puts a database entry into the backend data store using the GitHub
-        payload.
-
-        :param payload: payload containing relevant attributes for db entry
-        :type payload: dict
-
-        """
-
-        packet = Packet(
-            commit=payload['commit'],
-            tag=payload['tag'],
-            author=payload['author'],
-            repository=payload['repository'],
-            environment=payload['environment']
-        )
-
-        db.session.add(packet)
-        db.session.commit()
-
-    @staticmethod
     def parse_github_payload(request=None):
         """
         parses a GitHub webhook message to create a models.Commit instance
@@ -252,9 +230,6 @@ class GithubListener(Resource):
             if 'tags' in formatted_request['ref'] else None
         }
 
-        if payload['repository'] not in current_app.config.get('WATCHED_REPOS'):
-            raise UnknownRepoError("{}".format(payload['repository']))
-
         return payload
 
     def post(self):
@@ -276,9 +251,6 @@ class GithubListener(Resource):
             payload = GithubListener.parse_github_payload(request)
         except UnknownRepoError, e:
             return {"Unknown repo": "{}".format(e)}, 400
-
-        # Put a DB entry
-        GithubListener.push_database(payload)
 
         # Submit to RabbitMQ worker
         GithubListener.push_rabbitmq(payload)
