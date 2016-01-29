@@ -1,4 +1,4 @@
-from .. import utils
+from .. import utils, app
 import pika
 import sys
 import json
@@ -28,6 +28,8 @@ class RabbitMQWorker(object):
         self.channel = None
         self.fwd_topic = None
         self.fwd_exchange = None
+        app.init_app()
+        
         if 'publish' in self.params and self.params['publish']:
             self.publish_topic = self.params['publish']
 
