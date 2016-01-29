@@ -17,16 +17,23 @@ class TestIntegrationWorker(unittest.TestCase):
     Unit tests for the test integration worker
     """
 
+    @mock.patch('ADSDeploy.pipeline.integration_tester.os.path.isdir')
+    @mock.patch('ADSDeploy.pipeline.integration_tester.ChangeDirectory')
     @mock.patch('ADSDeploy.pipeline.integration_tester.shutil.rmtree')
     @mock.patch('ADSDeploy.pipeline.integration_tester.subprocess')
     @mock.patch('ADSDeploy.pipeline.integration_tester.git.Repo.clone_from')
     @mock.patch('ADSDeploy.pipeline.integration_tester.IntegrationTestWorker.publish')
-    def test_worker_running_test(self, mocked_publish, mocked_clone, mocked_subprocess, mocked_rmtree):
+    def test_worker_running_test(self, mocked_publish, mocked_clone, mocked_subprocess, mocked_rmtree, mocked_cd, mocked_isdir):
         """
         Test that the integration worker follows the expected workflow:
         """
 
         # Mock responses
+        instance_cd = mocked_cd.return_value
+        instance_cd.__enter__.return_value = instance_cd
+        instance_cd.__exit__.return_value = None
+
+        mocked_isdir.return_value = True
         mocked_publish.return_value = None
         mocked_clone.return_value = None
 
@@ -43,9 +50,7 @@ class TestIntegrationWorker(unittest.TestCase):
         }
 
         worker = IntegrationTestWorker()
-        worker.process_payload(example_payload)
-
-        # The payload work flow is the following
+        result = worker.run_test(example_payload)
 
         # The worker downloads the repository that contains the integration
         # tests
@@ -56,7 +61,7 @@ class TestIntegrationWorker(unittest.TestCase):
         # The worker changes into the directory and runs the tests using
         # a bash script
         mocked_subprocess.Popen.assert_has_calls(
-            [mock.call(['pushd', '/tmp/adsrex', ';', 'py.test', ';', 'popd'])]
+            [mock.call(['py.test'], stdin=mocked_subprocess.PIPE, stdout=mocked_subprocess.PIPE)]
         )
 
         # The test repository should also no longer exist
@@ -64,13 +69,125 @@ class TestIntegrationWorker(unittest.TestCase):
             [mock.call('/tmp/adsrex')]
         )
 
-        # The worker also places a database entry for the status change
+        # The test passes and it forwards a packet on to the relevant worker,
+        # with the updated keyword for test pass
+        example_payload['test passed'] = True
+        self.assertEqual(
+            example_payload,
+            result
+        )
+
+    @mock.patch('ADSDeploy.pipeline.integration_tester.os.path.isdir')
+    @mock.patch('ADSDeploy.pipeline.integration_tester.ChangeDirectory')
+    @mock.patch('ADSDeploy.pipeline.integration_tester.shutil.rmtree')
+    @mock.patch('ADSDeploy.pipeline.integration_tester.subprocess')
+    @mock.patch('ADSDeploy.pipeline.integration_tester.git.Repo.clone_from')
+    @mock.patch('ADSDeploy.pipeline.integration_tester.IntegrationTestWorker.publish')
+    def test_subprocess_raises_error(self, mocked_publish, mocked_clone, mocked_subprocess, mocked_rmtree, mocked_cd, mocked_isdir):
+        """
+        Test that nothing breaks if subprocess fails
+        """
+
+        # Mock responses
+        instance_cd = mocked_cd.return_value
+        instance_cd.__enter__.return_value = instance_cd
+        instance_cd.__exit__.return_value = None
+
+        mocked_isdir.return_value = True
+        mocked_publish.return_value = None
+        mocked_clone.return_value = None
+
+        mocked_subprocess.Popen.side_effect = ValueError('ValueError')
+
+        example_payload = {
+            'application': 'staging',
+            'service': 'adsws',
+            'release': 'v1.0.0',
+            'config': {},
+            'action': 'test'
+        }
+
+        worker = IntegrationTestWorker()
+        result = worker.run_test(example_payload.copy())
+
+        # The worker downloads the repository that contains the integration
+        # tests
+        mocked_clone.assert_has_calls(
+            [mock.call('https://github.com/adsabs/adsrex.git', '/tmp/adsrex')]
+        )
+
+        # The worker changes into the directory and runs the tests using
+        # a bash script
+        mocked_subprocess.Popen.assert_has_calls(
+            [mock.call(['py.test'], stdin=mocked_subprocess.PIPE, stdout=mocked_subprocess.PIPE)]
+        )
+
+        # The test repository should also no longer exist
+        mocked_rmtree.assert_has_calls(
+            [mock.call('/tmp/adsrex')]
+        )
 
         # The test passes and it forwards a packet on to the relevant worker,
         # with the updated keyword for test pass
-        example_payload['test_passed'] = True
-        mocked_publish.assert_has_calls(
-            [mock.call(example_payload)]
+        example_payload['test passed'] = False
+
+        self.assertEqual(
+            example_payload,
+            result
+        )
+
+    @mock.patch('ADSDeploy.pipeline.integration_tester.os.path.isdir')
+    @mock.patch('ADSDeploy.pipeline.integration_tester.ChangeDirectory')
+    @mock.patch('ADSDeploy.pipeline.integration_tester.shutil.rmtree')
+    @mock.patch('ADSDeploy.pipeline.integration_tester.subprocess')
+    @mock.patch('ADSDeploy.pipeline.integration_tester.git.Repo.clone_from')
+    @mock.patch('ADSDeploy.pipeline.integration_tester.IntegrationTestWorker.publish')
+    def test_git_raises_error(self, mocked_publish, mocked_clone, mocked_subprocess, mocked_rmtree, mocked_cd, mocked_isdir):
+        """
+        Test that nothing breaks if subprocess fails
+        """
+
+        # Mock responses
+        instance_cd = mocked_cd.return_value
+        instance_cd.__enter__.return_value = instance_cd
+        instance_cd.__exit__.return_value = None
+
+        mocked_isdir.return_value = True
+        mocked_publish.return_value = None
+        mocked_clone.side_effect = ValueError('ValueError')
+
+        example_payload = {
+            'application': 'staging',
+            'service': 'adsws',
+            'release': 'v1.0.0',
+            'config': {},
+            'action': 'test'
+        }
+
+        worker = IntegrationTestWorker()
+        result = worker.run_test(example_payload.copy())
+
+        # The worker downloads the repository that contains the integration
+        # tests
+        mocked_clone.assert_has_calls(
+            [mock.call('https://github.com/adsabs/adsrex.git', '/tmp/adsrex')]
+        )
+
+        # Subprocess should not be called
+        self.assertFalse(mocked_subprocess.called)
+
+        # Regardless, rmtree should still be called to cleanup any folders
+        mocked_rmtree.assert_has_calls(
+            [mock.call('/tmp/adsrex')]
+        )
+
+        # The test passes and it forwards a packet on to the relevant worker,
+        # with the updated keyword for test pass
+        example_payload['test passed'] = False
+
+        self.assertEqual(
+            example_payload,
+            result
         )
 
 if __name__ == '__main__':

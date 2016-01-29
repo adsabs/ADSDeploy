@@ -27,6 +27,13 @@ POLL_INTERVAL = 15  # per-worker poll interval (to check health) in seconds.
 EXCHANGE = 'ADSDeploy'
 
 WORKERS = {
+    'deploy.Test': {
+        'concurrency': 1,
+        'subscribe': 'ads.deploy.test',
+        'publish': 'ads.deploy.after_deploy',
+        'error': 'ads.deploy.error'
+
+    },
     'errors.ErrorHandler': {
         'subscribe': None,
         'exchange': None,
