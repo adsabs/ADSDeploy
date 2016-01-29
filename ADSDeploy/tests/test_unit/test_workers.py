@@ -14,6 +14,7 @@ from ADSDeploy.tests import test_base
 from ADSDeploy.models import Base
 from ADSDeploy.pipeline.deploy import Deploy, BeforeDeploy
 from ADSDeploy.pipeline.workers import IntegrationTestWorker
+from collections import OrderedDict
 
 
 class TestIntegrationWorker(unittest.TestCase):
@@ -21,29 +22,38 @@ class TestIntegrationWorker(unittest.TestCase):
     Unit tests for the test integration worker
     """
 
+    @mock.patch('ADSDeploy.pipeline.integration_tester.open')
     @mock.patch('ADSDeploy.pipeline.integration_tester.os.path.isdir')
     @mock.patch('ADSDeploy.pipeline.integration_tester.ChangeDirectory')
     @mock.patch('ADSDeploy.pipeline.integration_tester.shutil.rmtree')
     @mock.patch('ADSDeploy.pipeline.integration_tester.subprocess')
     @mock.patch('ADSDeploy.pipeline.integration_tester.git.Repo.clone_from')
     @mock.patch('ADSDeploy.pipeline.integration_tester.IntegrationTestWorker.publish')
-    def test_worker_running_test(self, mocked_publish, mocked_clone, mocked_subprocess, mocked_rmtree, mocked_cd, mocked_isdir):
+    def test_worker_running_test(self, mocked_publish, mocked_clone, mocked_subprocess, mocked_rmtree, mocked_cd, mocked_isdir, mocked_open):
         """
         Test that the integration worker follows the expected workflow:
         """
 
         # Mock responses
+        # 1. File object
+        file_instance = mocked_open.return_value
+        file_instance.__enter__.return_value = file_instance
+        file_instance.__exit__.return_value = None
+
+        # 2. Change Directory
         instance_cd = mocked_cd.return_value
         instance_cd.__enter__.return_value = instance_cd
         instance_cd.__exit__.return_value = None
 
-        mocked_isdir.return_value = True
-        mocked_publish.return_value = None
-        mocked_clone.return_value = None
-
+        # 3. Subprocess
         process = mock.Mock()
         process.communicate.return_value = '10 passed', ''
         mocked_subprocess.Popen.return_value = process
+
+        # 4. Others
+        mocked_isdir.return_value = True
+        mocked_publish.return_value = None
+        mocked_clone.return_value = None
 
         example_payload = {
             'application': 'staging',
@@ -59,7 +69,12 @@ class TestIntegrationWorker(unittest.TestCase):
         # The worker downloads the repository that contains the integration
         # tests
         mocked_clone.assert_has_calls(
-            [mock.call('https://github.com/adsabs/adsrex.git', '/tmp/adsrex')]
+            [mock.call('https://github.com/adsabs/adsrex.git', '/tmp/adsrex', branch='develop')]
+        )
+
+        # Test that the local config gets produced
+        mocked_open.assert_has_calls(
+            [mock.call('/tmp/adsrex/v1/local_config.py', 'w')]
         )
 
         # The worker changes into the directory and runs the tests using
@@ -81,27 +96,36 @@ class TestIntegrationWorker(unittest.TestCase):
             result
         )
 
+    @mock.patch('ADSDeploy.pipeline.integration_tester.open')
     @mock.patch('ADSDeploy.pipeline.integration_tester.os.path.isdir')
     @mock.patch('ADSDeploy.pipeline.integration_tester.ChangeDirectory')
     @mock.patch('ADSDeploy.pipeline.integration_tester.shutil.rmtree')
     @mock.patch('ADSDeploy.pipeline.integration_tester.subprocess')
     @mock.patch('ADSDeploy.pipeline.integration_tester.git.Repo.clone_from')
     @mock.patch('ADSDeploy.pipeline.integration_tester.IntegrationTestWorker.publish')
-    def test_subprocess_raises_error(self, mocked_publish, mocked_clone, mocked_subprocess, mocked_rmtree, mocked_cd, mocked_isdir):
+    def test_subprocess_raises_error(self, mocked_publish, mocked_clone, mocked_subprocess, mocked_rmtree, mocked_cd, mocked_isdir, mocked_open):
         """
         Test that nothing breaks if subprocess fails
         """
 
         # Mock responses
+        # 1. File object
+        file_instance = mocked_open.return_value
+        file_instance.__enter__.return_value = file_instance
+        file_instance.__exit__.return_value = None
+
+        # 2. Change Directory
         instance_cd = mocked_cd.return_value
         instance_cd.__enter__.return_value = instance_cd
         instance_cd.__exit__.return_value = None
 
+        # 3. Subprocess
+        mocked_subprocess.Popen.side_effect = ValueError('ValueError')
+
+        # 4. Others
         mocked_isdir.return_value = True
         mocked_publish.return_value = None
         mocked_clone.return_value = None
-
-        mocked_subprocess.Popen.side_effect = ValueError('ValueError')
 
         example_payload = {
             'application': 'staging',
@@ -117,7 +141,12 @@ class TestIntegrationWorker(unittest.TestCase):
         # The worker downloads the repository that contains the integration
         # tests
         mocked_clone.assert_has_calls(
-            [mock.call('https://github.com/adsabs/adsrex.git', '/tmp/adsrex')]
+            [mock.call('https://github.com/adsabs/adsrex.git', '/tmp/adsrex', branch='develop')]
+        )
+
+        # Test that the local config gets produced
+        mocked_open.assert_has_calls(
+            [mock.call('/tmp/adsrex/v1/local_config.py', 'w')]
         )
 
         # The worker changes into the directory and runs the tests using
@@ -140,22 +169,35 @@ class TestIntegrationWorker(unittest.TestCase):
             result
         )
 
+    @mock.patch('ADSDeploy.pipeline.integration_tester.open')
     @mock.patch('ADSDeploy.pipeline.integration_tester.os.path.isdir')
     @mock.patch('ADSDeploy.pipeline.integration_tester.ChangeDirectory')
     @mock.patch('ADSDeploy.pipeline.integration_tester.shutil.rmtree')
     @mock.patch('ADSDeploy.pipeline.integration_tester.subprocess')
     @mock.patch('ADSDeploy.pipeline.integration_tester.git.Repo.clone_from')
     @mock.patch('ADSDeploy.pipeline.integration_tester.IntegrationTestWorker.publish')
-    def test_git_raises_error(self, mocked_publish, mocked_clone, mocked_subprocess, mocked_rmtree, mocked_cd, mocked_isdir):
+    def test_git_raises_error(self, mocked_publish, mocked_clone, mocked_subprocess, mocked_rmtree, mocked_cd, mocked_isdir, mocked_open):
         """
-        Test that nothing breaks if subprocess fails
+        Test that nothing breaks if git pull fails
         """
 
         # Mock responses
+        # 1. File object
+        file_instance = mocked_open.return_value
+        file_instance.__enter__.return_value = file_instance
+        file_instance.__exit__.return_value = None
+
+        # 2. Change Directory
         instance_cd = mocked_cd.return_value
         instance_cd.__enter__.return_value = instance_cd
         instance_cd.__exit__.return_value = None
 
+        # 3. Subprocess
+        process = mock.Mock()
+        process.communicate.return_value = '10 passed', ''
+        mocked_subprocess.Popen.return_value = process
+
+        # 4. Others
         mocked_isdir.return_value = True
         mocked_publish.return_value = None
         mocked_clone.side_effect = ValueError('ValueError')
@@ -174,8 +216,11 @@ class TestIntegrationWorker(unittest.TestCase):
         # The worker downloads the repository that contains the integration
         # tests
         mocked_clone.assert_has_calls(
-            [mock.call('https://github.com/adsabs/adsrex.git', '/tmp/adsrex')]
+            [mock.call('https://github.com/adsabs/adsrex.git', '/tmp/adsrex', branch='develop')]
         )
+
+        # Test that the local config does not get produced
+        self.assertFalse(mocked_open.called)
 
         # Subprocess should not be called
         self.assertFalse(mocked_subprocess.called)
@@ -193,6 +238,23 @@ class TestIntegrationWorker(unittest.TestCase):
             example_payload,
             result
         )
+
+    def test_make_local_config(self):
+        """
+        Test that making the local config looks like it is expected to
+        """
+        input_dictionary = OrderedDict([
+            ('first_value', 1),
+            ('first_word', 'word one'),
+            ('second_value', 2.0),
+            ('second_word', 'word two')
+        ])
+        expected_text = 'first_value = 1\nfirst_word = \'word one\'\n' \
+                        'second_value = 2.0\nsecond_word = \'word two\''
+
+        actual_text = IntegrationTestWorker.make_local_config(input_dictionary)
+
+        self.assertEqual(expected_text, actual_text)
 
 
 class TestWorkers(test_base.TestUnit):
@@ -217,7 +279,8 @@ class TestWorkers(test_base.TestUnit):
     def test_deploy_BeforeDeploy(self):
         """Checks the worker has access to the AWS"""
         worker = BeforeDeploy()
-        worker.process_payload({'application': 'sandbox', 'environment': 'adsws'})
+        with self.assertRaises(Exception):
+            worker.process_payload({'application': 'sandbox', 'environment': 'adsws'})
 
 
 if __name__ == '__main__':

@@ -10,12 +10,24 @@ import shutil
 import subprocess
 
 from .. import app
-from generic import RabbitMQWorker
 from ..utils import ChangeDirectory
+from generic import RabbitMQWorker
+from collections import OrderedDict
 
 ADS_REX_URL = 'https://github.com/adsabs/adsrex.git'
+ADS_REX_BRANCH = 'develop'
 ADS_REX_TMP = '/tmp/adsrex'
 ADS_REX_PASS_KEYWORD = 'test passed'
+
+ADS_REX_LOCAL_CONFIG = OrderedDict(
+    API_BASE='https://devapi.adsabs.harvard.edu',
+    AUTHENTICATED_USER_EMAIL='test@ads',
+    AUTHENTICATED_USER_ACCESS_TOKEN='token',
+    ORCID_OAUTH_ENDPOINT='https://sandbox.orcid.org/oauth/custom/login.json',
+    ORCID_CLIENT_ID='',
+    ORCID_USER='',
+    ORCID_PASS=''
+)
 
 
 class IntegrationTestWorker(RabbitMQWorker):
@@ -33,9 +45,29 @@ class IntegrationTestWorker(RabbitMQWorker):
         super(IntegrationTestWorker, self).__init__(params)
         app.init_app()
 
+    @staticmethod
+    def make_local_config(config):
+        """
+        Hack to turn a dictionary into a single string
+        :param config:
+        """
+
+        s = []
+        for k, v in config.iteritems():
+            if not isinstance(v, int) and not isinstance(v, float):
+                s.append('{} = \'{}\''.format(k, v))
+            else:
+                s.append('{} = {}'.format(k, v))
+
+        print s, config
+
+        return '\n'.join(s)
+
     def run_test(self, msg):
         """
         Wrapper for easily testing the running of tests based on the payload
+
+        ADSRex relies on a
 
         :param msg: input packet
         :type msg: dict
@@ -45,7 +77,13 @@ class IntegrationTestWorker(RabbitMQWorker):
 
         try:
             # Step 1: download the repository that has the tests
-            git.Repo.clone_from(ADS_REX_URL, ADS_REX_TMP)
+            r = git.Repo.clone_from(ADS_REX_URL, ADS_REX_TMP, branch=ADS_REX_BRANCH)
+
+            # Step 2: load the config for adsrex
+            local_config = '{}/v1/local_config.py'.format(ADS_REX_TMP)
+            if os.path.isdir(ADS_REX_TMP):
+                with open(local_config, 'w') as f:
+                    f.write(self.make_local_config(ADS_REX_LOCAL_CONFIG))
 
             # Step 2: run the tests via subprocess
             script = ['py.test']
