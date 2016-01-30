@@ -21,7 +21,7 @@ from ADSDeploy import app
 from ADSDeploy.tests import test_base
 from ADSDeploy.models import Base
 from ADSDeploy.pipeline.example import ExampleWorker
-from ADSDeploy.pipeline.deploy import Deploy, BeforeDeploy
+from ADSDeploy.pipeline.deploy import Deploy, BeforeDeploy, AfterDeploy
 
 
 class TestWorkers(test_base.TestUnit):

@@ -9,7 +9,7 @@ class RabbitMQWorker(object):
     Base worker class. Defines the plumbing to communicate with rabbitMQ
     """
 
-    def __init__(self, params=None):
+    def __init__(self, params=None, *args, **kwargs):
         """
         Initialisation function (constructor) of the class
 
@@ -25,6 +25,7 @@ class RabbitMQWorker(object):
         self.logger.debug('Initialized')
         self.exchange = params.get('exchange', None)
         self.publish_topic = None
+        self.subscribe_topic = None
         self.channel = None
         self.fwd_topic = None
         self.fwd_exchange = None
@@ -173,7 +174,8 @@ class RabbitMQWorker(object):
         if 'subscribe' in self.params and self.params['subscribe']:
             self.logger.debug('Subscribing to: {0}'.format(self.params['subscribe']))
             self.channel.basic_consume(callback, queue=self.params['subscribe'], **kwargs)
-
+            self.subscribe_topic = self.params['subscribe']
+            
             if not self.params.get('TEST_RUN', False):
                 self.logger.debug('Worker consuming from queue: {0}'.format(
                     self.params['subscribe']))

@@ -60,7 +60,7 @@ class TestFunctional(TestUnit):
         # to connect
         app = self.app
         TM = pstart.TaskMaster(app.config.get('RABBITMQ_URL'),
-                        'ADSDeploy-test-exchange',
+                        'ads-deploy-test-exchange',
                         app.config.get('QUEUES'),
                         app.config.get('WORKERS'))
         TM.initialize_rabbitmq()
@@ -84,8 +84,8 @@ class TestFunctional(TestUnit):
         :return: no return
         """
 
-        self.publish_worker = generic.RabbitMQWorker()
-        self.ret_queue = self.publish_worker.connect(self.app.config.get('RABBITMQ_URL'))
+        self.test_publisher = generic.RabbitMQWorker(params=dict(exchange='ads-deploy-test-exchange'))
+        self.ret_queue = self.test_publisher.connect(self.app.config.get('RABBITMQ_URL'))
 
         
     def purge_all_queues(self):
@@ -98,10 +98,10 @@ class TestFunctional(TestUnit):
             for x in ('publish', 'subscribe'):
                 if x in wconfig and wconfig[x]:
                     try:
-                        self.publish_worker.channel.queue_delete(queue=wconfig[x])
+                        self.test_publisher.channel.queue_delete(queue=wconfig[x])
                     except pika.exceptions.ChannelClosed, e:
                         pass
-        self.publish_worker.channel.exchange_delete(self.TM.exchange, if_unused=True)
+        self.test_publisher.channel.exchange_delete(self.TM.exchange, if_unused=True)
 
     def tearDown(self):
         """
