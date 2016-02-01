@@ -1,8 +1,12 @@
+"""
+Generic worker template
+"""
 from .. import utils, app
 import pika
 import sys
 import json
 import traceback
+
 
 class RabbitMQWorker(object):
     """
@@ -34,7 +38,6 @@ class RabbitMQWorker(object):
         if 'publish' in self.params and self.params['publish']:
             self.publish_topic = self.params['publish']
 
-
     def setup_logging(self, level='DEBUG'):
         """
         Sets up the generic logging of the worker
@@ -43,7 +46,7 @@ class RabbitMQWorker(object):
         :return: no return
         """
 
-        return utils.setup_logging(__file__, self.__class__.__name__)
+        return utils.setup_logging(__file__, self.__class__.__name__, level=level)
 
     def connect(self, url, confirm_delivery=False):
         """
@@ -85,7 +88,6 @@ class RabbitMQWorker(object):
             self.logger.error(sys.exc_info())
             raise Exception(sys.exc_info())
 
-
     def publish_to_error_queue(self, message, exchange=None, routing_key=None,
                                **kwargs):
         """
@@ -105,7 +107,6 @@ class RabbitMQWorker(object):
             routing_key = self.params.get('error', 'ads.orcid.error')
 
         self.publish(message, topic=routing_key, properties=kwargs['header_frame'])
-
 
     def forward(self, message, topic=None, **kwargs):
         """
@@ -128,8 +129,7 @@ class RabbitMQWorker(object):
         self.fwd_channel.basic_publish(exchange=self.fwd_exchange,
                                    routing_key=topic or self.fwd_topic,
                                    body=message)
-        
-        
+
     def publish(self, message, topic=None, **kwargs):
         """
         Publishes messages to the queue. Uses the generic template for the
@@ -159,7 +159,6 @@ class RabbitMQWorker(object):
         self.channel.basic_publish(exchange=self.exchange,
                                    routing_key=topic or self.publish_topic,
                                    body=message)
-        
 
     def subscribe(self, callback, **kwargs):
         """
@@ -173,22 +172,23 @@ class RabbitMQWorker(object):
 
         if 'subscribe' in self.params and self.params['subscribe']:
             self.logger.debug('Subscribing to: {0}'.format(self.params['subscribe']))
-            self.channel.basic_consume(callback, queue=self.params['subscribe'], **kwargs)
-            self.subscribe_topic = self.params['subscribe']
-            
-            if not self.params.get('TEST_RUN', False):
-                self.logger.debug('Worker consuming from queue: {0}'.format(
-                    self.params['subscribe']))
-                self.channel.start_consuming()
 
-    
+            if not self.params.get('TEST_RUN', False):
+                self.channel.basic_consume(callback, queue=self.params['subscribe'], **kwargs)
+                self.subscribe_topic = self.params['subscribe']
+                self.logger.debug('Worker consuming from queue: {0}'
+                                  .format(self.params['subscribe']))
+                self.channel.start_consuming()
+            else:
+                msg = self.channel.basic_get(queue=self.params['subscribe'])
+                self.on_message(self.channel, *msg)
+
     def process_payload(self, payload, 
                         channel=None, 
                         method_frame=None, 
                         header_frame=None):
         """Please provide your own implementation"""
         raise NotImplementedError("Missing impl of process_payload")
-        
 
     def on_message(self, channel, method_frame, header_frame, body):
         """
@@ -202,6 +202,7 @@ class RabbitMQWorker(object):
         :return: no return
         """
 
+        self.logger.debug('Obtaining message from queue')
         message = json.loads(body)
         try:
             self.logger.debug('Running on message')
@@ -225,13 +226,11 @@ class RabbitMQWorker(object):
         # Send delivery acknowledgement
         self.channel.basic_ack(delivery_tag=method_frame.delivery_tag)
 
-
     def run(self):
         """
         Wrapper function that both connects the worker to the RabbitMQ instance
         and starts it consuming messages.
         :return: no return
         """
-
         self.connect(self.params['RABBITMQ_URL'])
         self.subscribe(self.on_message)

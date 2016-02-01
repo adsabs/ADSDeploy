@@ -16,6 +16,24 @@ from cloghandler import ConcurrentRotatingFileHandler
 local_zone = tz.tzlocal()
 utc_zone = tz.tzutc()
 
+
+class ChangeDirectory(object):
+    """
+    Context manager for changing directories, ensures returning to the original
+    directory for successful or failed
+    """
+
+    def __init__(self, desired_path):
+        self.original_path = os.getcwd()
+        self.desired_path = os.path.expanduser(desired_path)
+
+    def __enter__(self):
+        os.chdir(self.desired_path)
+
+    def __exit__(self, type, value, traceback):
+        os.chdir(self.original_path)
+
+
 def get_date(timestr=None):
     """
     Always parses the time to be in the UTC time zone; or returns
@@ -87,7 +105,7 @@ def load_module(filename):
     from_object(d, res)
     return res
 
-def setup_logging(file_, name_, level='WARN'):
+def setup_logging(file_, name_, level='DEBUG'):
     """
     Sets up generic logging to file with rotating files on disk
 
