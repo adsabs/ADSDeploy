@@ -59,8 +59,6 @@ class IntegrationTestWorker(RabbitMQWorker):
             else:
                 s.append('{} = {}'.format(k, v))
 
-        print s, config
-
         return '\n'.join(s)
 
     def run_test(self, msg):
@@ -77,7 +75,7 @@ class IntegrationTestWorker(RabbitMQWorker):
 
         try:
             # Step 1: download the repository that has the tests
-            r = git.Repo.clone_from(ADS_REX_URL, ADS_REX_TMP, branch=ADS_REX_BRANCH)
+            git.Repo.clone_from(ADS_REX_URL, ADS_REX_TMP, branch=ADS_REX_BRANCH)
 
             # Step 2: load the config for adsrex
             local_config = '{}/v1/local_config.py'.format(ADS_REX_TMP)
@@ -119,7 +117,11 @@ class IntegrationTestWorker(RabbitMQWorker):
 
         # do something with the payload
         msg = dict(msg)
-        result = IntegrationTestWorker.run_test(msg)
+        result = IntegrationTestWorker.run_test(msg=msg)
+
+        if not msg.get('application', None):
+            self.logger.error('Application keyword was not specified.')
+            raise KeyError('Missing "application" keyword')
 
         # publish the results into the queue
         self.logger.info('Publishing to queue: {}'.format(self.publish_topic))
