@@ -1,7 +1,9 @@
-
+import os
+import threading
 import subprocess
+import signal
 
-def cmd(cmd, inputv=None, cwd=None):
+def cmd(cmd, inputv=None, cwd=None, max_wait=None):
     """Runs a command in the console and returns back the STDOUT/STDERR"""
     try:
         p = subprocess.Popen(cmd, shell=True,
@@ -9,13 +11,26 @@ def cmd(cmd, inputv=None, cwd=None):
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             cwd=cwd,
-            close_fds=True)
+            close_fds=True,
+            preexec_fn=os.setsid
+            )
     except Exception, e:
         raise e
     
+    timer = None
+    if max_wait:
+        def run(pro):
+            os.killpg(os.getpgid(pro.pid), signal.SIGTERM)
+        timer = threading.Timer(max_wait, run, args=[p])
+        
+    
     if inputv:
         p.communicate(inputv)
+        
     retcode = p.wait()
+    
+    if timer and timer.isAlive():
+        timer.cancel()
 
     class Object(object): pass
 
@@ -36,9 +51,10 @@ def cmd(cmd, inputv=None, cwd=None):
 
 
 class Executioner(object):
-    def __init__(self, python_virtualenv, home_folder):
+    def __init__(self, python_virtualenv, home_folder, max_wait):
         self.root = home_folder
         self.pyenv = python_virtualenv
+        self.max_wait = max_wait
         
     def cmd(self, command, inputv=None):
         """Will always run the command with activated python virtualenv

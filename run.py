@@ -41,7 +41,7 @@ def purge_queues(queues):
             for x in ('publish', 'subscribe'):
                 if x in wconfig and wconfig[x]:
                     try:
-                        publish_worker.channel.queue_delete(queue=wconfig[x])
+                        test_publisher.channel.queue_delete(queue=wconfig[x])
                     except pika.exceptions.ChannelClosed, e:
                         pass
 
