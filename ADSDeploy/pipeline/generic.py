@@ -101,10 +101,10 @@ class RabbitMQWorker(object):
         :return: no return
         """
         if not exchange:
-            exchange = self.params.get('exchange', 'ads-orcid')
+            exchange = self.params.get('exchange', 'ads-deploy')
 
         if not routing_key:
-            routing_key = self.params.get('error', 'ads.orcid.error')
+            routing_key = self.params.get('error', 'ads.deploy.error')
 
         self.publish(message, topic=routing_key, properties=kwargs['header_frame'])
 
