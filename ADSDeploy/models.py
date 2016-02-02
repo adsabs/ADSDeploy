@@ -62,10 +62,22 @@ class Transaction(Base):
         }
 
     def __repr__(self):
-        return '<WorkerPacket (id: {}, commit: {}, tag: {}, timestamp: {}, ' \
-               'author: {}, repository: {}, deployed: {}, tested: {}, ' \
-               'environment: {}'.format(
-                    self.id, self.commit, self.tag, self.timestamp, self.author,
-                    self.repository, self.deployed, self.tested,
-                    self.application
-               )
+        """
+        String representation
+        :return: str
+        """
+        _repr = [
+            '\tapplication: {}'.format(self.application),
+            '\tservice: {}'.format(self.service),
+            '\tcommit: {}'.format(self.commit),
+            '\ttag: {}'.format(self.tag),
+            '\tdate_created: {}'.format(self.date_created),
+            '\tauthor: {}'.format(self.author),
+            '\tworker: {}'.format(self.worker),
+            '\tbefore_deploy: {}'.format(self.before_deploy),
+            '\tdeploy: {}'.format(self.deploy),
+            '\ttest: {}'.format(self.test),
+            '\tafter_deploy: {}'.format(self.after_deploy),
+        ]
+
+        return '<WorkerPacket (\n{}\n)>'.format(', \n'.join(_repr))
