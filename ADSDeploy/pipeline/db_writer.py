@@ -47,19 +47,23 @@ class DatabaseWriterWorker(RabbitMQWorker):
             'after_deploy'
         ]
 
-        # do something with the payload
         result = dict(msg)
 
+        # First check the payload is complete
+        for attr in required_attr:
+            if attr not in result:
+                self.logger.error(
+                    'Missing attribute "{}", not writing to database:  [{}]'
+                    .format(attr, result)
+                )
+                raise KeyError
+
+        # Write the payload to disk
         with self.app.session_scope() as session:
 
             transaction = Transaction()
             for attr in required_attr:
-                try:
-                    setattr(transaction, attr, result[attr])
-                except KeyError as err:
-                    self.logger.error('Missing attribute, not writing to database: {} [{}]'
-                                      .format(err, result))
-                    raise
+                setattr(transaction, attr, result[attr])
 
             try:
                 session.add(transaction)
