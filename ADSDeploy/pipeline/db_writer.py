@@ -2,7 +2,8 @@
 
 from .. import app
 from generic import RabbitMQWorker
-from ..models import Transaction
+from ..models import Deployment
+from sqlalchemy.orm.exc import NoResultFound
 
 
 class DatabaseWriterWorker(RabbitMQWorker):
@@ -19,54 +20,49 @@ class DatabaseWriterWorker(RabbitMQWorker):
         :param msg: payload, must contain all of the values below:
             {
                 'application': ''
-                'service': '',
-                'active': '',
+                'environment': '',
                 'commit': '',
                 'tag': '',
-                'author': '',
-                'worker': '',
-                'before_deploy': '',
-                'deploy': '',
-                'test': '',
-                'after_deploy': ''
+                'deployed': '',
+                'tested': '',
             }
         :type msg: dict
         """
 
-        required_attr = [
+        allowed_attr = [
             'application',
-            'service',
-            'active',
+            'environment',
             'commit',
             'tag',
-            'author',
-            'worker',
-            'before_deploy',
-            'deploy',
-            'test',
-            'after_deploy'
+            'deployed',
+            'tested',
         ]
 
         result = dict(msg)
 
-        # First check the payload is complete
-        for attr in required_attr:
-            if attr not in result:
-                self.logger.error(
-                    'Missing attribute "{}", not writing to database:  [{}]'
-                    .format(attr, result)
-                )
-                raise KeyError
-
         # Write the payload to disk
         with self.app.session_scope() as session:
 
-            transaction = Transaction()
-            for attr in required_attr:
-                setattr(transaction, attr, result[attr])
-
+            # Does the deployment already exist in the database, if so, find it
             try:
-                session.add(transaction)
+                deployment = session.query(Deployment).filter(
+                    Deployment.application == 'staging',
+                    Deployment.environment == 'adsws',
+                    Deployment.commit == 'latest-commit'
+                ).one()
+            except NoResultFound:
+                deployment = Deployment()
+
+            # Either insert or update values
+            for attr in allowed_attr:
+                try:
+                    setattr(deployment, attr, result[attr])
+                except KeyError:
+                    continue
+
+            # Commit to the database or roll back
+            try:
+                session.add(deployment)
                 session.commit()
             except Exception as err:
                 self.logger.warning('Rolling back db entry: {}'.format(err))

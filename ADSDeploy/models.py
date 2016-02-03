@@ -15,33 +15,38 @@ class KeyValue(Base):
     Example model, it stores key/value pairs - a persistent configuration
     """
     __tablename__ = 'storage'
-    
+
     key = Column(String(255), primary_key=True)
     value = Column(Text)
-    
+
     def toJSON(self):
-        return {'key': self.key, 'value': self.value } 
+        """
+        Convert to JSON
+        :return: dict
+        """
+        return {'key': self.key, 'value': self.value}
 
 
-class Transaction(Base):
+class Deployment(Base):
     """
     Represents an entry from a worker
     """
-    __tablename__ = 'transaction'
+    __tablename__ = 'deployment'
 
     id = Column(Integer, primary_key=True)
     application = Column(String)
-    service = Column(String)
-    active = Column(Boolean, default=False)
+    environment = Column(String)
     commit = Column(String)
     tag = Column(String)
     date_created = Column(DateTime, nullable=False, default=datetime.utcnow)
-    author = Column(String)
-    worker = Column(String)
-    before_deploy = Column(Boolean, default=False)
-    deploy = Column(Boolean, default=False)
-    test = Column(Boolean, default=False)
-    after_deploy = Column(Boolean, default=True)
+    date_last_modified = Column(
+        DateTime,
+        nullable=False,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow
+    )
+    deployed = Column(Boolean, default=False)
+    tested = Column(Boolean, default=False)
 
     def toJSON(self):
         """
@@ -50,16 +55,13 @@ class Transaction(Base):
         """
         return {
             'application': self.application,
-            'service': self.service,
+            'environment': self.environment,
             'commit': self.commit,
             'tag': self.tag,
             'date_created': self.date_created,
-            'author': self.author,
-            'worker': self.worker,
-            'before_deploy': self.before_deploy,
-            'deploy': self.deploy,
-            'test': self.test,
-            'after_deploy': self.after_deploy,
+            'date_last_modified': self.date_last_modified,
+            'deployed': self.deployed,
+            'tested': self.tested,
         }
 
     def __repr__(self):
@@ -69,16 +71,13 @@ class Transaction(Base):
         """
         _repr = [
             '\tapplication: {}'.format(self.application),
-            '\tservice: {}'.format(self.service),
+            '\tenvironment: {}'.format(self.environment),
             '\tcommit: {}'.format(self.commit),
             '\ttag: {}'.format(self.tag),
             '\tdate_created: {}'.format(self.date_created),
-            '\tauthor: {}'.format(self.author),
-            '\tworker: {}'.format(self.worker),
-            '\tbefore_deploy: {}'.format(self.before_deploy),
-            '\tdeploy: {}'.format(self.deploy),
-            '\ttest: {}'.format(self.test),
-            '\tafter_deploy: {}'.format(self.after_deploy),
+            '\tdate_last_modified: {}'.format(self.date_last_modified),
+            '\tdeployed: {}'.format(self.deploy),
+            '\ttested: {}'.format(self.test)
         ]
 
-        return '<WorkerPacket (\n{}\n)>'.format(', \n'.join(_repr))
+        return '<Deployment (\n{}\n)>'.format(', \n'.join(_repr))

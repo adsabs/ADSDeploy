@@ -6,11 +6,11 @@ Unit tests of the project. Each function related to the workers individual tools
 are tested in this suite. There is no communication.
 """
 
-import mock
 import unittest
 
+from datetime import datetime
 from ADSDeploy import app
-from ADSDeploy.models import Base, Transaction
+from ADSDeploy.models import Base, Deployment
 from ADSDeploy.pipeline.workers import DatabaseWriterWorker
 
 
@@ -40,32 +40,27 @@ class TestDatabaseWriterWorker(unittest.TestCase):
         """
         worker_payload = {
             'application': 'staging',
-            'service': 'adsws',
+            'environment': 'adsws',
             'commit': 'latest-commit',
             'tag': 'latest-tag',
-            'author': 'someone',
-            'worker': 'ads.deploy.test',
-            'before_deploy': True,
-            'deploy': True,
-            'test': False,
-            'after_deploy': False,
-            'active': False
+            'deployed': True,
+            'tested': False,
         }
 
         worker = DatabaseWriterWorker()
         worker.process_payload(worker_payload)
 
         with self.app.session_scope() as session:
-            transaction = session.query(Transaction).filter(
-                Transaction.application == 'staging',
-                Transaction.commit == 'latest-commit',
-                Transaction.service == 'adsws'
+            deployment = session.query(Deployment).filter(
+                Deployment.application == 'staging',
+                Deployment.environment == 'adsws',
+                Deployment.commit == 'latest-commit'
             ).one()
 
             for key in worker_payload:
 
                 expected_value = worker_payload[key]
-                stored_value = getattr(transaction, key)
+                stored_value = getattr(deployment, key)
 
                 self.assertEqual(
                     expected_value,
@@ -74,21 +69,51 @@ class TestDatabaseWriterWorker(unittest.TestCase):
                         .format(key, expected_value, stored_value)
                 )
 
-    def test_worker_raises_for_missing_fields(self):
+            self.assertIsInstance(deployment.date_created, datetime)
+            self.assertIsInstance(deployment.date_last_modified, datetime)
+
+    def test_worker_overwrites_entry(self):
         """
-        Test that the worker fails safely if there are missing entries
+        Test that the worker overwrites the relevant data in the database
         """
+
+        # Stub the database entry
+        with self.app.session_scope() as session:
+            deployment = Deployment(
+                application='staging',
+                environment='adsws',
+                commit='latest-commit',
+                tag='latest-tag',
+                deployed=True,
+                tested=False
+            )
+            session.add(deployment)
+            session.commit()
+
         worker_payload = {
             'application': 'staging',
-            'service': 'adsws',
+            'environment': 'adsws',
             'commit': 'latest-commit',
-            'tag': 'latest-tag'
+            'tag': 'latest-tag',
+            'deployed': True,
+            'tested': True,
         }
 
         worker = DatabaseWriterWorker()
+        worker.process_payload(worker_payload)
 
-        with self.assertRaises(KeyError):
-            worker.process_payload(worker_payload)
+        with self.app.session_scope() as session:
+            deployment = session.query(Deployment).filter(
+                Deployment.application == 'staging',
+                Deployment.environment == 'adsws',
+                Deployment.commit == 'latest-commit'
+            ).one()
+
+            self.assertTrue(deployment.tested)
+            self.assertTrue(
+                deployment.date_last_modified > deployment.date_created
+            )
+
 
 if __name__ == '__main__':
     unittest.main()
