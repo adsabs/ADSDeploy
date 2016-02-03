@@ -7,7 +7,7 @@ import hmac
 import json
 
 import pika
-from ADSDeploy.config import RABBITMQ_URL, EXCHANGE, FIRST_ROUTE
+from ADSDeploy.config import RABBITMQ_URL
 from flask import current_app, request, abort
 from flask.ext.restful import Resource
 

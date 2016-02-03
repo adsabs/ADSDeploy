@@ -285,12 +285,16 @@ class TestWorkers(test_base.TestUnit):
             Base.metadata.create_all()
         return app
 
+    @mock.patch('ADSDeploy.pipeline.deploy.os.path.exists')
     @mock.patch('ADSDeploy.pipeline.deploy.BeforeDeploy.publish')
     @mock.patch('ADSDeploy.osutils.Executioner.cmd', 
                 return_value=Mock(**dict(retcode=0, 
                                          out='Ready adsws-sandbox.elasticbeanstalk.com adsws:v1.0.0:v1.0.2-17-g1b31375 Green adsws-sandbox')))
-    def test_deploy_before_deploy(self, PatchedBeforeDeploy, exect):
+    def test_deploy_before_deploy(self, PatchedBeforeDeploy, exect, exists):
         """Checks the worker has access to the AWS"""
+        # BeforeDeploy requires EB_DEPLOY path to exist
+        exists.return_value = True
+
         worker = BeforeDeploy()
         worker.process_payload({'application': 'sandbox', 'environment': 'adsws'})
         worker.publish.assert_called_with({'environment': 'adsws', 'application': 'sandbox', 'msg': 'OK to deploy'})

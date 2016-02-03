@@ -23,6 +23,8 @@ class TestEndpoints(TestCase):
         app_ = app.create_app()
         app_.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite://'
         app_.config['DEPLOY_LOGGING'] = {}
+        app_.config['EXCHANGE'] = 'unit-test-exchange'
+        app_.config['ROUTE'] = 'unit-test-route'
         return app_
 
     def test_githublistener_endpoint(self):
@@ -68,7 +70,7 @@ class TestEndpoints(TestCase):
         }
 
         mocked_rabbit.assert_has_calls(
-            [mock.call(expected_packet, exchange='ADSDeploy', route='ads.deploy.before_deploy')]
+            [mock.call(expected_packet, exchange='unit-test-exchange', route='unit-test-route')]
         )
 
     @mock.patch('ADSDeploy.webapp.views.GithubListener')
@@ -84,8 +86,7 @@ class TestEndpoints(TestCase):
         payload = {
             'application': 'staging',
             'commit': '23d3f',
-            'tag': 'v1.0.0',
-            'service': 'adsws',
+            'environment': 'adsws',
         }
 
         r = self.client.post(url, data=json.dumps(payload))
@@ -94,7 +95,7 @@ class TestEndpoints(TestCase):
         self.assertEqual(r.json['msg'], 'success')
 
         mocked_gh.push_rabbitmq.assert_has_calls(
-            [mock.call(payload, exchange='ADSDeploy', route='ads.deploy.before_deploy')]
+            [mock.call(payload, exchange='unit-test-exchange', route='unit-test-route')]
         )
 
     @mock.patch('ADSDeploy.webapp.views.GithubListener')
@@ -109,8 +110,7 @@ class TestEndpoints(TestCase):
 
         payload = {
             'application': 'staging',
-            'service': 'adsws',
-            'commit': 'latest-commit'
+            'environment': 'adsws',
         }
 
         r = self.client.post(url, data=json.dumps(payload))
