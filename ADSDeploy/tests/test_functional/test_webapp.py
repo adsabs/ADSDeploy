@@ -21,7 +21,6 @@ class TestWebApp(unittest.TestCase):
     """
 
     def setUp(self):
-
         with MiniRabbit(RABBITMQ_URL) as w:
             w.make_queue('test')
 
@@ -34,19 +33,18 @@ class TestWebApp(unittest.TestCase):
         Test that the end points publishes messages to the correct queue
         """
 
-        url = 'http://{}/rabbit'.format(WEBAPP_URL)
+        url = 'http://{}/command'.format(WEBAPP_URL)
 
         payload = {
-            'queue': 'deploy',
-            'commit': '23d3f',
-            'service': 'adsws',
-            'route': 'test',
-            'exchange': 'test'
+            'application': 'staging',
+            'environment': 'adsws',
+            'commit': 's23rfef3',
         }
 
         r = requests.post(url, data=json.dumps(payload))
 
         self.assertEqual(r.status_code, 200)
+
         self.assertEqual(r.json()['msg'], 'success')
 
         with MiniRabbit(RABBITMQ_URL) as w:
@@ -59,9 +57,6 @@ class TestWebApp(unittest.TestCase):
             msg='Expected 1 message, but found: {}'.format(messages)
         )
 
-        # We do not expect exchange or route in the payload
-        payload.pop('exchange')
-        payload.pop('route')
         self.assertEqual(
             packet,
             payload,

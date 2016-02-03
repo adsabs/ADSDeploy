@@ -23,6 +23,8 @@ class TestEndpoints(TestCase):
         app_ = app.create_app()
         app_.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite://'
         app_.config['DEPLOY_LOGGING'] = {}
+        app_.config['EXCHANGE'] = 'unit-test-exchange'
+        app_.config['ROUTE'] = 'unit-test-route'
         return app_
 
     def test_githublistener_endpoint(self):
@@ -67,23 +69,24 @@ class TestEndpoints(TestCase):
             'tag': None
         }
 
-        mocked_rabbit.assert_called_once_with(expected_packet)
+        mocked_rabbit.assert_has_calls(
+            [mock.call(expected_packet, exchange='unit-test-exchange', route='unit-test-route')]
+        )
 
     @mock.patch('ADSDeploy.webapp.views.GithubListener')
-    def test_rabbitmqlistener_forwards_message(self, mocked_gh):
+    def test_command_forwards_message_deploy(self, mocked_gh):
         """
-        Tests that the RabbitMQ parses and forwards the messages to the
-        relevant queues
+
         """
 
         mocked_gh.push_rabbitmq.return_value = None
 
-        url = url_for('rabbitmqlistener')
+        url = url_for('commandview')
 
         payload = {
-            'queue': 'deploy',
+            'application': 'staging',
             'commit': '23d3f',
-            'service': 'adsws'
+            'environment': 'adsws',
         }
 
         r = self.client.post(url, data=json.dumps(payload))
@@ -92,5 +95,24 @@ class TestEndpoints(TestCase):
         self.assertEqual(r.json['msg'], 'success')
 
         mocked_gh.push_rabbitmq.assert_has_calls(
-            [mock.call(payload)]
+            [mock.call(payload, exchange='unit-test-exchange', route='unit-test-route')]
         )
+
+    @mock.patch('ADSDeploy.webapp.views.GithubListener')
+    def test_commandview_missing_payload(self, mocked_gh):
+        """
+        Test a 400 is raised if the user provides malformed data
+        """
+
+        mocked_gh.push_rabbitmq.return_value = None
+
+        url = url_for('commandview')
+
+        payload = {
+            'application': 'staging',
+            'environment': 'adsws',
+        }
+
+        r = self.client.post(url, data=json.dumps(payload))
+
+        self.assertStatus(r, 400)
