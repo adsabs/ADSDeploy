@@ -7,7 +7,7 @@ import hmac
 import json
 
 import pika
-from ADSDeploy.config import RABBITMQ_URL
+from ADSDeploy.config import RABBITMQ_URL, EXCHANGE, FIRST_ROUTE
 from flask import current_app, request, abort
 from flask.ext.restful import Resource
 
@@ -101,6 +101,8 @@ class MiniRabbit(object):
         :param queue: rabbitmq queue name
         :type queue: str
         """
+        exchange = queue if not exchange else exchange
+
         self.channel.queue_delete(queue=queue)
         self.channel.exchange_delete(exchange=exchange if not None else queue)
 
@@ -111,8 +113,10 @@ class MiniRabbit(object):
         :param queue: desired queue name
         :type queue: str
         """
+
+        exchange = queue if not exchange else exchange
         self.channel.exchange_declare(
-            exchange=exchange if not None else queue,
+            exchange=exchange,
             passive=False,
             durable=False,
             internal=False,
@@ -129,25 +133,42 @@ class MiniRabbit(object):
 
         self.channel.queue_bind(
             queue=queue,
-            exchange=exchange if not None else queue,
+            exchange=exchange,
             routing_key=queue
         )
 
 
-class RabbitMQListener(Resource):
+class CommandView(Resource):
     """
     RabbitMQ Proxy
     """
 
     def post(self):
         """
-        A Proxy end point that forwards a message onto the relevant queues on
-        RabbitMQ
+        A proxy end point that forwards commands from the UI to the worker that
+        makes the correct decision. It does minor checks on the keywords passed
+        to the end point.
         """
 
         payload = request.get_json(force=True)
 
-        GithubListener.push_rabbitmq(payload)
+        required_keywords = [
+            'application',
+            'environment',
+            'commit'
+        ]
+
+        for key in required_keywords:
+            if key not in payload.keys():
+                current_app.logger.error('Missing keyword "{}" from payload: {}'
+                                         .format(key, payload))
+                abort(400, 'Missing keyword: {}'.format(key))
+
+        GithubListener.push_rabbitmq(
+            payload,
+            exchange=current_app.config.get('EXCHANGE'),
+            route=current_app.config.get('ROUTE')
+        )
 
         return {'msg': 'success'}, 200
 
@@ -191,18 +212,20 @@ class GithubListener(Resource):
         return True
 
     @staticmethod
-    def push_rabbitmq(payload, **kwargs):
+    def push_rabbitmq(payload, exchange, route):
         """
         Publishes the payload received from the GitHub webhooks to the correct
         queues on RabbitMQ.
+
+        :param exchange: rabbitmq exchange
+        :type exchange: str
+
+        :param route: rabbitmq route
+        :type route: str
+
         :param payload: GitHub webhook payload
         :type payload: dict
-
-        :param kwargs: override defaults, but do not require them
         """
-
-        exchange = payload.pop('exchange')
-        route = payload.pop('route')
 
         with MiniRabbit(RABBITMQ_URL) as w:
             w.publish(
@@ -254,11 +277,11 @@ class GithubListener(Resource):
 
         try:
             payload = GithubListener.parse_github_payload(request)
-        except UnknownRepoError, e:
-            return {"Unknown repo": "{}".format(e)}, 400
+        except Exception as error:
+            return {'Exception: "{}"'.format(error)}, 400
 
         # Submit to RabbitMQ worker
-        GithubListener.push_rabbitmq(payload)
+        GithubListener.push_rabbitmq(payload, exchange=current_app.config.get('EXCHANGE'), route=current_app.config.get('ROUTE'))
 
         return {'received': '{}@{}:{}'.format(payload['repository'],
                                               payload['commit'],

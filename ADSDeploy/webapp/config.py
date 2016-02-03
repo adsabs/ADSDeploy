@@ -1,3 +1,13 @@
+import os
+
+LOG_PATH = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), '../../')
+)
+LOG_PATH = '{home}/logs'.format(home=LOG_PATH)
+
+if not os.path.isdir(LOG_PATH):
+    os.mkdir(LOG_PATH)
+
 GITHUB_SIGNATURE_HEADER = 'X-Hub-Signature'
 GITHUB_SECRET = 'redacted'
 GITHUB_COMMIT_API = 'https://api.github.com/repos/adsabs/{repo}/git/commits/{hash}'
@@ -23,10 +33,16 @@ DEPLOY_LOGGING = {
             'level': 'DEBUG',
             'class': 'logging.StreamHandler'
         },
+        'file': {
+            'filename': '{}/webapp.log'.format(LOG_PATH),
+            'formatter': 'default',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'level': 'DEBUG'
+        }
     },
     'loggers': {
         '': {
-            'handlers': ['console'],
+            'handlers': ['console', 'file'],
             'level': 'DEBUG',
             'propagate': True,
         },
