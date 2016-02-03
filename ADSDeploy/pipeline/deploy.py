@@ -123,32 +123,12 @@ class AfterDeploy(RabbitMQWorker):
         """Runs the cleanup after the deployment happened."""
         
         # reset the timer
-        key = 'testing.{0}.last-used'.format(payload['application'])
+        key = '{0}.{1}.last-used'.format(payload['application'], payload['environment'])
         now = time.time()
         with app.session_scope() as session:
             u = session.query(KeyValue).filter_by(key=key).first()
             if u is not None:
                 u.value = now
-            u = KeyValue(key, now)
+            u = KeyValue(key=key, value=now)
             session.add(u)
             session.commit()
-        
-        def run(application, environment, key, old_now):
-            # check something else did not update the timestamp in the meantime
-            with app.session_scope() as session:
-                u = session.query(KeyValue).filter_by(key=key).first()
-                if u and time.time() + 1 - u.value > app.config.get('AFTER_DEPLOY_CLEANUP_TIME', 50*60):
-                    x = create_executioner({'application': application, 'environment': environment})
-                    r = x.cmd("./find-env-by-attr url testing")
-                    to_terminate = []
-                    for env in r.out.split():
-                        parts = env.split()
-                        to_terminate.append(parts[4])
-                    for x in to_terminate:
-                        x.cmd('eb terminate --force --nohang {0}'.format(x))
-                
-            
-        threading.Timer(app.config.get('AFTER_DEPLOY_CLEANUP_TIME', 50*60), run, 
-                        args=[payload['application'], payload['environment'], key, now]).start()
-        
-        
