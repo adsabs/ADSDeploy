@@ -15,6 +15,7 @@ class KeyValue(Base):
     Example model, it stores key/value pairs - a persistent configuration
     """
     __tablename__ = 'storage'
+    
     key = Column(String(255), primary_key=True)
     value = Column(Text)
     

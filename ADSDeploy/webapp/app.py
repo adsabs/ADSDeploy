@@ -7,7 +7,7 @@ import os
 
 from flask import Flask
 from flask.ext.restful import Api
-from views import GithubListener, RabbitMQListener
+from views import GithubListener, CommandView
 from .models import db
 
 
@@ -31,7 +31,7 @@ def create_app(name='ADSDeploy'):
     # Register extensions
     api = Api(app)
     api.add_resource(GithubListener, '/webhooks', methods=['POST'])
-    api.add_resource(RabbitMQListener, '/rabbit', methods=['POST'])
+    api.add_resource(CommandView, '/command', methods=['POST'])
     db.init_app(app)
 
     return app

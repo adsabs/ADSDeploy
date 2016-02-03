@@ -8,13 +8,14 @@ import mock
 import hashlib
 import unittest
 
+from flask.ext.testing import TestCase
 from ADSDeploy.webapp import app
 from ADSDeploy.webapp.models import db, Packet
 from ADSDeploy.webapp.views import GithubListener
 from stub_data.stub_webapp import github_payload, payload_tag
 from ADSDeploy.webapp.utils import get_boto_session
 from ADSDeploy.webapp.exceptions import NoSignatureInfo, InvalidSignature
-from flask.ext.testing import TestCase
+from collections import OrderedDict
 
 
 class FakeRequest:
@@ -186,36 +187,18 @@ class TestStaticMethodUtilities(TestCase):
         instance_rabbit.__exit__.return_value = None
         instance_rabbit.publish.side_effect = None
 
-        payload = {
-            'exchange': 'test',
-            'route': 'test',
-            'repository': 'important-service',
-            'commit': 'da89fuhds',
-            'environment': 'staging',
-            'author': 'author',
-            'tag': 'da89fuhds',
-        }
-        payload_copy = payload.copy()
+        payload = OrderedDict([
+            ('repository', 'important-service'),
+            ('commit', 'd8fgdfgdf'),
+            ('environment', 'staging'),
+            ('author', 'author'),
+            ('tag', 'dsfdsf')
+        ])
 
-        GithubListener.push_rabbitmq(payload_copy)
+        GithubListener.push_rabbitmq(payload=payload, exchange='test', route='test')
 
         self.assertTrue(mocked_rabbit.called)
 
-        c = instance_rabbit.publish.call_args[1]
-
-        self.assertEqual(
-            c['route'],
-            payload.pop('route')
+        instance_rabbit.publish.assert_has_calls(
+            [mock.call(payload=json.dumps(payload), exchange='test', route='test')]
         )
-        self.assertEqual(
-            c['exchange'],
-            payload.pop('exchange')
-        )
-
-        p = json.loads(c['payload'])
-        for key in payload:
-            self.assertEqual(
-                payload[key],
-                p.get(key, None),
-                msg='key "{}" not found in call {}'.format(key, p)
-            )

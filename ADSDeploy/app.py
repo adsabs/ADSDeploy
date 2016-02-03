@@ -23,6 +23,7 @@ def init_app(local_config=None):
     :return None
     """
     
+    global logger, session
     if session is not None: # the app was already instantiated
         return
 
@@ -30,7 +31,6 @@ def init_app(local_config=None):
     if local_config:
         config.update(local_config)
     
-    global logger, session
     logger = utils.setup_logging(__file__, 'app', config['LOGGING_LEVEL'])
     engine = create_engine(config.get('SQLALCHEMY_URL', 'sqlite:///'),
                            echo=config.get('SQLALCHEMY_ECHO', False))
@@ -74,6 +74,6 @@ def session_scope():
         s.rollback()
         raise
     finally:
-        s.close()        
+        session.remove() 
     
 
