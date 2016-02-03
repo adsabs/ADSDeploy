@@ -7,20 +7,27 @@ are tested in this suite. There is no communication.
 """
 
 import mock
+from mock import Mock
 import unittest
 
 from ADSDeploy import app
 from ADSDeploy.tests import test_base
-from ADSDeploy.models import Base
+from ADSDeploy.models import Base, KeyValue
 from ADSDeploy.pipeline.deploy import Deploy, BeforeDeploy, AfterDeploy
 from ADSDeploy.pipeline.workers import IntegrationTestWorker
-from collections import OrderedDict
+from collections import OrderedDict, namedtuple
+import time
 
 
 class TestIntegrationWorker(unittest.TestCase):
     """
     Unit tests for the test integration worker
     """
+
+    def tearDown(self):
+        unittest.TestCase.tearDown(self)
+        app.close_app()
+
 
     @mock.patch('ADSDeploy.pipeline.integration_tester.open')
     @mock.patch('ADSDeploy.pipeline.integration_tester.os.path.isdir')
@@ -271,17 +278,31 @@ class TestWorkers(test_base.TestUnit):
         app.init_app({
             'SQLALCHEMY_URL': 'sqlite:///',
             'SQLALCHEMY_ECHO': False,
+            'AFTER_DEPLOY_CLEANUP_TIME': 1
         })
-        Base.metadata.bind = app.session.get_bind()
-        Base.metadata.create_all()
+        with app.session_scope() as session:
+            Base.metadata.bind = session.get_bind()
+            Base.metadata.create_all()
         return app
 
-    def test_deploy_BeforeDeploy(self):
+    @mock.patch('ADSDeploy.pipeline.deploy.BeforeDeploy.publish')
+    @mock.patch('ADSDeploy.osutils.Executioner.cmd', 
+                return_value=Mock(**dict(retcode=0, 
+                                         out='Ready adsws-sandbox.elasticbeanstalk.com adsws:v1.0.0:v1.0.2-17-g1b31375 Green adsws-sandbox')))
+    def test_deploy_before_deploy(self, PatchedBeforeDeploy, exect):
         """Checks the worker has access to the AWS"""
         worker = BeforeDeploy()
-        with self.assertRaises(Exception):
-            worker.process_payload({'application': 'sandbox', 'environment': 'adsws'})
+        worker.process_payload({'application': 'sandbox', 'environment': 'adsws'})
+        worker.publish.assert_called_with({'environment': 'adsws', 'application': 'sandbox', 'msg': 'OK to deploy'})
 
+    def test_deploy_after_deploy(self):
+        worker = AfterDeploy()
+        worker.process_payload({'application': 'sandbox', 'environment': 'adsws'})
+        with app.session_scope() as sess:
+            u = sess.query(KeyValue).first()
+            assert u.toJSON()['key'] == u'sandbox.adsws.last-used'
+            assert float(u.toJSON()['value']) < time.time() + 1
+            assert float(u.toJSON()['value']) > time.time() - 1
 
 if __name__ == '__main__':
     unittest.main()
