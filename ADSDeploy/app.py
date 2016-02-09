@@ -8,8 +8,6 @@ from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 from . import utils
-import os
-import sys
 
 config = {}
 session = None
@@ -32,12 +30,13 @@ def init_app(local_config=None):
         config.update(local_config)
     
     logger = utils.setup_logging(__file__, 'app', config['LOGGING_LEVEL'])
-    engine = create_engine(config.get('SQLALCHEMY_URL', 'sqlite:///'),
+    engine = create_engine(config.get('SQLALCHEMY_URL', 'sqlite://'),
                            echo=config.get('SQLALCHEMY_ECHO', False))
     session_factory = sessionmaker()
     
     session = scoped_session(session_factory)
     session.configure(bind=engine)
+
 
 def close_app():
     """Closes the app"""
@@ -74,6 +73,6 @@ def session_scope():
         s.rollback()
         raise
     finally:
-        session.remove() 
+        session.remove()
     
 

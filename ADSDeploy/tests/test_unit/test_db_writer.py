@@ -20,7 +20,7 @@ class TestDatabaseWriterWorker(unittest.TestCase):
     """
     def create_app(self):
         app.init_app({
-            'SQLALCHEMY_URL': 'sqlite:///',
+            'SQLALCHEMY_URL': 'sqlite://',
             'SQLALCHEMY_ECHO': False,
         })
         Base.metadata.bind = app.session.get_bind()

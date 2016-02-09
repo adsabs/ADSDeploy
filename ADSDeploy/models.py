@@ -58,8 +58,8 @@ class Deployment(Base):
             'environment': self.environment,
             'commit': self.commit,
             'tag': self.tag,
-            'date_created': self.date_created,
-            'date_last_modified': self.date_last_modified,
+            'date_created': self.date_created.isoformat(),
+            'date_last_modified': self.date_last_modified.isoformat(),
             'deployed': self.deployed,
             'tested': self.tested,
         }
@@ -76,8 +76,8 @@ class Deployment(Base):
             '\ttag: {}'.format(self.tag),
             '\tdate_created: {}'.format(self.date_created),
             '\tdate_last_modified: {}'.format(self.date_last_modified),
-            '\tdeployed: {}'.format(self.deploy),
-            '\ttested: {}'.format(self.test)
+            '\tdeployed: {}'.format(self.deployed),
+            '\ttested: {}'.format(self.tested)
         ]
 
         return '<Deployment (\n{}\n)>'.format(', \n'.join(_repr))
