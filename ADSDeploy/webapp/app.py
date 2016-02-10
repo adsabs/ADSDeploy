@@ -7,8 +7,9 @@ import os
 
 from flask import Flask
 from flask.ext.restful import Api
-from views import GithubListener, CommandView
-from .models import db
+from .views import GithubListener, CommandView, socketio, \
+    after_insert, after_update
+from .models import db, Deployment
 
 
 def create_app(name='ADSDeploy'):
@@ -32,7 +33,15 @@ def create_app(name='ADSDeploy'):
     api = Api(app)
     api.add_resource(GithubListener, '/webhooks', methods=['POST'])
     api.add_resource(CommandView, '/command', methods=['POST'])
+
+    # Register any WebSockets
+    socketio.init_app(app)
+
+    # Initialise the database
     db.init_app(app)
+    # add events
+    db.event.listen(Deployment, 'after_insert', after_insert)
+    db.event.listen(Deployment, 'after_update', after_update)
 
     return app
 

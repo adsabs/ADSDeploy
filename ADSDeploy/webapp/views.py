@@ -10,8 +10,12 @@ import pika
 from ADSDeploy.config import RABBITMQ_URL
 from flask import current_app, request, abort
 from flask.ext.restful import Resource
+from flask.ext.socketio import SocketIO, emit
 
+from .models import db, Deployment
 from .exceptions import NoSignatureInfo, InvalidSignature
+
+socketio = SocketIO()
 
 
 class MiniRabbit(object):
@@ -254,7 +258,7 @@ class GithubListener(Resource):
             'commit': formatted_request['head_commit']['id'],
             'environment': 'sandbox',
             'author': formatted_request['head_commit']['author']['username'],
-            'tag': formatted_request['ref'].replace('refs/tags/', '') \
+            'tag': formatted_request['ref'].replace('refs/tags/', '')
             if 'tags' in formatted_request['ref'] else None
         }
 
@@ -281,13 +285,64 @@ class GithubListener(Resource):
             return {'Exception: "{}"'.format(error)}, 400
 
         # Submit to RabbitMQ worker
-        GithubListener.push_rabbitmq(payload, exchange=current_app.config.get('EXCHANGE'), route=current_app.config.get('ROUTE'))
+        GithubListener.push_rabbitmq(
+            payload,
+            exchange=current_app.config.get('EXCHANGE'),
+            route=current_app.config.get('ROUTE')
+        )
 
         return {'received': '{}@{}:{}'.format(payload['repository'],
                                               payload['commit'],
                                               payload['environment'])}
 
 
+def after_insert(mapper, connection, target):
+    """
+    Listen to a change to the database, if there is one, emit a message to the
+    /status end point
+
+    :param mapper: Mapper which is the target of this event.
+    :param connection: the Connection being used to emit UPDATE statements for
+    this instance. provides a handle into the current transaction on the
+    target database specific to this instance.
+    :param target: the mapped instance being persisted. If the event is
+    configured with raw=True, this will instead be the InstanceState
+    state-management object associated with the instance.
+    """
+    socketio.emit(
+        'database insert',
+        target.toJSON(),
+        namespace='/status'
+    )
 
 
+def after_update(mapper, connection, target):
+    """
+    Listen to a change to the database, if there is one, emit a message to the
+    /status end point
 
+    :param mapper: Mapper which is the target of this event.
+    :param connection: the Connection being used to emit UPDATE statements for
+    this instance. provides a handle into the current transaction on the
+    target database specific to this instance.
+    :param target: the mapped instance being persisted. If the event is
+    configured with raw=True, this will instead be the InstanceState
+    state-management object associated with the instance.
+    """
+    socketio.emit(
+        'database update',
+        target.toJSON(),
+        namespace='/status'
+    )
+
+
+@socketio.on('connect', namespace='/status')
+def connect_status():
+    """
+    When someone first connects to the WebSocket namespace /status
+    """
+    all_deployments = db.session.query(Deployment).all()
+    emit(
+        'connect',
+        [deployment.toJSON() for deployment in all_deployments]
+    )

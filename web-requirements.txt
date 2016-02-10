@@ -5,4 +5,7 @@ SQLAlchemy==1.0.11
 Flask-Testing==0.4.2
 boto3==1.2.3
 Flask-SQLAlchemy==2.1
+Flask-SocketIO==2.0
+python-engineio==0.8.7
+python-socketio==1.0
 pika==0.10.0

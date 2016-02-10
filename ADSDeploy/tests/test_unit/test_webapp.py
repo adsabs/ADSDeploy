@@ -10,7 +10,7 @@ import unittest
 
 from flask.ext.testing import TestCase
 from ADSDeploy.webapp import app
-from ADSDeploy.webapp.models import db, Packet
+from ADSDeploy.webapp.models import db, Deployment
 from ADSDeploy.webapp.views import GithubListener
 from stub_data.stub_webapp import github_payload, payload_tag
 from ADSDeploy.webapp.utils import get_boto_session
