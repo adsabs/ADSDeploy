@@ -142,6 +142,30 @@ class MiniRabbit(object):
         )
 
 
+class RabbitMQ(Resource):
+    """
+    RabbitMQ Testing Proxy
+    """
+
+    def post(self):
+        """
+        Generic RabbitMQ Proxy with no protection
+        """
+
+        payload = request.get_json(force=True)
+
+        exchange = payload.pop('exchange')
+        route = payload.pop('route')
+
+        GithubListener.push_rabbitmq(
+            payload,
+            exchange=exchange,
+            route=route
+        )
+
+        return {'msg': 'success'}, 200
+
+
 class CommandView(Resource):
     """
     RabbitMQ Proxy

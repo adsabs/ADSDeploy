@@ -17,7 +17,7 @@ from collections import OrderedDict
 ADS_REX_URL = 'https://github.com/adsabs/adsrex.git'
 ADS_REX_BRANCH = 'develop'
 ADS_REX_TMP = '/tmp/adsrex'
-ADS_REX_PASS_KEYWORD = 'test passed'
+ADS_REX_PASS_KEYWORD = 'tested'
 
 ADS_REX_LOCAL_CONFIG = OrderedDict(
     API_BASE='https://devapi.adsabs.harvard.edu',
@@ -86,7 +86,11 @@ class IntegrationTestWorker(RabbitMQWorker):
             # Step 2: run the tests via subprocess
             script = ['py.test']
             with ChangeDirectory(ADS_REX_TMP):
-                p = subprocess.Popen(script, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+                p = subprocess.Popen(
+                    script,
+                    stdout=subprocess.PIPE,
+                    stdin=subprocess.PIPE
+                )
 
             out, err = p.communicate()
 
@@ -117,7 +121,7 @@ class IntegrationTestWorker(RabbitMQWorker):
 
         # do something with the payload
         msg = dict(msg)
-        result = IntegrationTestWorker.run_test(msg=msg)
+        result = self.run_test(msg=msg)
 
         if not msg.get('application', None):
             self.logger.error('Application keyword was not specified.')
@@ -125,4 +129,6 @@ class IntegrationTestWorker(RabbitMQWorker):
 
         # publish the results into the queue
         self.logger.info('Publishing to queue: {}'.format(self.publish_topic))
+
         self.publish(result)
+        self.forward(result)

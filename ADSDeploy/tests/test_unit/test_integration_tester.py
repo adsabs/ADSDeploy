@@ -90,7 +90,7 @@ class TestIntegrationWorker(unittest.TestCase):
 
         # The test passes and it forwards a packet on to the relevant worker,
         # with the updated keyword for test pass
-        example_payload['test passed'] = True
+        example_payload['tested'] = True
         self.assertEqual(
             example_payload,
             result
@@ -162,7 +162,7 @@ class TestIntegrationWorker(unittest.TestCase):
 
         # The test passes and it forwards a packet on to the relevant worker,
         # with the updated keyword for test pass
-        example_payload['test passed'] = False
+        example_payload['tested'] = False
 
         self.assertEqual(
             example_payload,
@@ -232,7 +232,7 @@ class TestIntegrationWorker(unittest.TestCase):
 
         # The test passes and it forwards a packet on to the relevant worker,
         # with the updated keyword for test pass
-        example_payload['test passed'] = False
+        example_payload['tested'] = False
 
         self.assertEqual(
             example_payload,
