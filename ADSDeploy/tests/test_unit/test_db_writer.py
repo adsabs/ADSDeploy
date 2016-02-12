@@ -114,6 +114,37 @@ class TestDatabaseWriterWorker(unittest.TestCase):
                 deployment.date_last_modified > deployment.date_created
             )
 
+    def test_worker_raises_key_error(self):
+        """
+        Test that a KeyError is raised if the attributes of a Deployment model,
+        that uniquely identifies a record, are not passed.
+        """
+
+        worker_payload_1 = {
+            'application': 'adsws',
+            'environment': 'staging',
+        }
+        worker_payload_2 = {
+            'environment': 'production',
+            'commit': 'latest-commit',
+        }
+        worker_payload_3 = {
+            'application': 'graphics',
+        }
+        worker_payload_4 = {
+            'commit': 'latest-commit',
+        }
+        worker_payload_5 = {
+            'environment': 'staging'
+        }
+        payloads = [worker_payload_1, worker_payload_2, worker_payload_3,
+                    worker_payload_4, worker_payload_5]
+
+        worker = DatabaseWriterWorker()
+
+        for payload in payloads:
+            with self.assertRaises(KeyError):
+                worker.process_payload(payload)
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,4 +1,6 @@
-
+"""
+Database Writer
+"""
 
 from .. import app
 from generic import RabbitMQWorker
@@ -8,7 +10,7 @@ from sqlalchemy.orm.exc import NoResultFound
 
 class DatabaseWriterWorker(RabbitMQWorker):
     """
-    Hello world example
+    Database Writer Worker
     """
     def __init__(self, params=None):
         super(DatabaseWriterWorker, self).__init__(params)
@@ -36,6 +38,7 @@ class DatabaseWriterWorker(RabbitMQWorker):
             'tag',
             'deployed',
             'tested',
+            'msg'
         ]
 
         result = dict(msg)
@@ -46,12 +49,27 @@ class DatabaseWriterWorker(RabbitMQWorker):
             # Does the deployment already exist in the database, if so, find it
             try:
                 deployment = session.query(Deployment).filter(
-                    Deployment.application == 'staging',
-                    Deployment.environment == 'adsws',
-                    Deployment.commit == 'latest-commit'
+                    Deployment.application == result['application'],
+                    Deployment.environment == result['environment'],
+                    Deployment.commit == result['commit']
                 ).one()
             except NoResultFound:
                 deployment = Deployment()
+                self.logger.debug(
+                    'No entry for <Deployment '
+                    'environment: "{}", '
+                    'application: "{}", '
+                    'commit: "{}">'.format(
+                        result['environment'],
+                        result['application'],
+                        result['commit']
+                    )
+                )
+
+            except KeyError as error:
+                self.logger.error('Missing uniquely identifying information '
+                                  'for a record: {} [{}]'.format(error, msg))
+                raise
 
             # Either insert or update values
             for attr in allowed_attr:

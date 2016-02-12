@@ -98,7 +98,7 @@ class RabbitMQWorker(object):
         :param exchange: name of the exchange that contains the error queue
         :param routing_key: routing key for the error queue
         :param kwargs: extra keywords that may be needed
-        :return: no return
+        :return: no return1
         """
         if not exchange:
             exchange = self.params.get('exchange', 'ads-deploy')

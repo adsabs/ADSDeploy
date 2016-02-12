@@ -55,13 +55,19 @@ class BeforeDeploy(RabbitMQWorker):
         if is_timedout(payload, timestamp_key='init_timestamp'):
             payload['err'] = 'timeout'
             payload['msg'] = 'BeforeDeploy: waiting too long for the environment to come up'
-            return self.publish_to_error_queue(payload)
+            payload['deployed'] = False
+
+            self.forward(payload)
+
+            return self.publish_to_error_queue(payload,
+                                               header_frame=header_frame)
         
         x = create_executioner(payload)
         
         # checks we can access the AWS and that the environment in question
         # is not busy
         r = x.cmd("./find-env-by-attr url {0}".format(payload['environment']))
+        self.logger.info(r.retcode)
         assert r.retcode == 0
         
         for l in r.out.splitlines():
@@ -77,6 +83,8 @@ class BeforeDeploy(RabbitMQWorker):
         
         # all is OK, we can proceed
         payload['msg'] = 'OK to deploy'
+
+        self.forward(payload)
         self.publish(payload)
 
         
@@ -95,21 +103,24 @@ class Deploy(RabbitMQWorker):
         """Runs the actual deployment. It calls the eb-deploy safe-deploy.sh."""
         
         x = create_executioner(payload)
-        self.publish({'msg': '{0}-{1} deployment starts'.format(payload['environment'], payload['application'])}, 
-                      topic='ads.deploy.status')
-        
+        payload['msg'] = '{0}-{1} deployment starts'.format(payload['environment'], payload['application'])
+        self.forward(payload)
+
         # this will run for a few minutes!
         r = x.cmd('./safe-deploy.sh {0} > /tmp/deploy.{0}.{1}'.format(payload['environment'], payload['application']))
         if r.retcode == 0:
+            payload['deployed'] = True
             payload['msg'] = 'deployed'
-            self.publish(payload) 
-            self.publish({'msg': '{0}-{1} deployment finished'.format(payload['environment'], payload['application'])}, 
-                      topic='ads.deploy.status')
+            self.forward(payload)
+            self.publish(payload)
         else:
             payload['err'] = 'deployment failed'
-            payload['msg'] = 'command: {0}, reason: {1}, stdout: {2}'.format(r.command, r.err, r.out)
-            self.publish_to_error_queue(payload)
-
+            payload['deployed'] = False
+            payload['msg'] = 'deployment failed; command: {0}, reason: {1}, ' \
+                             'stdout: {2}'.format(r.command, r.err, r.out)
+            # self.publish(payload, topic='ads.deploy.status')
+            self.forward(payload)
+            self.publish_to_error_queue(payload, header_frame=header_frame)
 
 
 class AfterDeploy(RabbitMQWorker):

@@ -31,6 +31,10 @@ WORKERS = {
         'concurrency': 1,
         'subscribe': 'ads.deploy.before_deploy',
         'publish': 'ads.deploy.deploy',
+        'forwarding': {
+            'exchange': EXCHANGE,
+            'publish': 'ads.deploy.status'
+        },
         'error': 'ads.deploy.error',
         'durable': True
     },
@@ -38,6 +42,10 @@ WORKERS = {
         'concurrency': 1,
         'subscribe': 'ads.deploy.deploy',
         'publish': 'ads.deploy.test',
+        'forwarding': {
+            'exchange': EXCHANGE,
+            'publish': 'ads.deploy.status'
+        },
         'error': 'ads.deploy.error',
         'durable': True
     },
@@ -45,6 +53,10 @@ WORKERS = {
         'concurrency': 1,
         'subscribe': 'ads.deploy.test',
         'publish': 'ads.deploy.after_deploy',
+        'forwarding': {
+            'exchange': EXCHANGE,
+            'publish': 'ads.deploy.status'
+        },
         'error': 'ads.deploy.error',
         'durable': True
     },

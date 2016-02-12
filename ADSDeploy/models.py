@@ -45,8 +45,9 @@ class Deployment(Base):
         default=datetime.utcnow,
         onupdate=datetime.utcnow
     )
-    deployed = Column(Boolean, default=False)
-    tested = Column(Boolean, default=False)
+    deployed = Column(Boolean, nullable=True)
+    tested = Column(Boolean, nullable=True)
+    msg = Column(String)
 
     def toJSON(self):
         """
@@ -62,6 +63,7 @@ class Deployment(Base):
             'date_last_modified': self.date_last_modified.isoformat(),
             'deployed': self.deployed,
             'tested': self.tested,
+            'msg': self.msg
         }
 
     def __repr__(self):
@@ -77,7 +79,8 @@ class Deployment(Base):
             '\tdate_created: {}'.format(self.date_created),
             '\tdate_last_modified: {}'.format(self.date_last_modified),
             '\tdeployed: {}'.format(self.deployed),
-            '\ttested: {}'.format(self.tested)
+            '\ttested: {}'.format(self.tested),
+            '\tmsg: {}'.format(self.msg)
         ]
 
         return '<Deployment (\n{}\n)>'.format(', \n'.join(_repr))
