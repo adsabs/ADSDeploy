@@ -73,6 +73,18 @@ class TestDeployWorker(unittest.TestCase):
             'commit': 'gf9gd8f',
         }
 
+        # Stub the database with some early entries
+        first_deployment = Deployment(
+            environment=packet['environment'],
+            application=packet['application'],
+            tag='v0.0.1',
+            commit='adsfadsf',
+            deployed=True
+        )
+        with self.app.session_scope() as session:
+            session.add(first_deployment)
+            session.commit()
+
         # Override the run test returned value. This means the logic of the test
         # does not have to be mocked. retcode = 1 means it has failed
         mock_r = mock.Mock(retcode=1, command='r-command', err='r-err',
@@ -130,6 +142,10 @@ class TestDeployWorker(unittest.TestCase):
             )
             self.assertIsNone(deployment.deployed)
 
+            deployment = session.query(Deployment)\
+                .filter(Deployment.tag == 'v0.0.1').one()
+            self.assertTrue(deployment.deployed)
+
         db_worker.run()
         with self.app.session_scope() as session:
             deployment = session.query(Deployment)\
@@ -145,6 +161,11 @@ class TestDeployWorker(unittest.TestCase):
                 deployment.msg,
                 'deployment failed; command: r-command, reason: r-err, stdout: r-out'
             )
+
+            deployment = session.query(Deployment)\
+                .filter(Deployment.tag == 'v0.0.1').one()
+
+            self.assertTrue(deployment.deployed)
 
     @mock.patch('ADSDeploy.pipeline.deploy.create_executioner')
     def test_deploy_succeeds(self, mock_executioner):
@@ -167,6 +188,18 @@ class TestDeployWorker(unittest.TestCase):
             'tag': 'v1.0.0',
             'commit': 'gf9gd8f',
         }
+
+        # Stub the database with some early entries
+        first_deployment = Deployment(
+            environment=packet['environment'],
+            application=packet['application'],
+            tag='v0.0.1',
+            commit='adsfadsf',
+            deployed=True
+        )
+        with self.app.session_scope() as session:
+            session.add(first_deployment)
+            session.commit()
 
         # Override the run test returned value. This means the logic of the test
         # does not have to be mocked. retcode = 1 means it has failed
@@ -224,6 +257,10 @@ class TestDeployWorker(unittest.TestCase):
             )
             self.assertIsNone(deployment.deployed)
 
+            deployment = session.query(Deployment)\
+                .filter(Deployment.tag == 'v0.0.1').one()
+            self.assertTrue(deployment.deployed)
+
         db_worker.run()
         with self.app.session_scope() as session:
             deployment = session.query(Deployment)\
@@ -239,3 +276,7 @@ class TestDeployWorker(unittest.TestCase):
                 deployment.msg,
                 'deployed'
             )
+
+            deployment = session.query(Deployment)\
+                .filter(Deployment.tag == 'v0.0.1').one()
+            self.assertFalse(deployment.deployed)

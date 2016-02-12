@@ -71,6 +71,16 @@ class DatabaseWriterWorker(RabbitMQWorker):
                                   'for a record: {} [{}]'.format(error, msg))
                 raise
 
+            # New deployment?
+            if not deployment.deployed and result.get('deployed', False):
+                other_deployments = session.query(Deployment).filter(
+                    Deployment.application == result['application'],
+                    Deployment.environment == result['environment'],
+                    Deployment.deployed == True,
+                    Deployment.commit != result['commit'],
+                    Deployment.tag != result['tag']
+                ).all()
+
             # Either insert or update values
             for attr in allowed_attr:
                 try:
@@ -82,6 +92,12 @@ class DatabaseWriterWorker(RabbitMQWorker):
             try:
                 session.add(deployment)
                 session.commit()
+
+                for other in other_deployments:
+                    other.deployed = False
+                    session.add(other)
+                    session.commit()
+
             except Exception as err:
                 self.logger.warning('Rolling back db entry: {}'.format(err))
                 session.rollback()
