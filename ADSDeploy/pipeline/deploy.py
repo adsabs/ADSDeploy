@@ -104,22 +104,23 @@ class Deploy(RabbitMQWorker):
         
         x = create_executioner(payload)
         payload['msg'] = '{0}-{1} deployment starts'.format(payload['environment'], payload['application'])
-        self.publish(payload, topic='ads.deploy.status')
+        self.forward(payload)
 
         # this will run for a few minutes!
         r = x.cmd('./safe-deploy.sh {0} > /tmp/deploy.{0}.{1}'.format(payload['environment'], payload['application']))
         if r.retcode == 0:
             payload['deployed'] = True
             payload['msg'] = 'deployed'
+            self.forward(payload)
             self.publish(payload)
-            self.publish(payload, topic='ads.deploy.status')
         else:
             payload['err'] = 'deployment failed'
             payload['deployed'] = False
             payload['msg'] = 'deployment failed; command: {0}, reason: {1}, ' \
                              'stdout: {2}'.format(r.command, r.err, r.out)
-            self.publish(payload, topic='ads.deploy.status')
-            self.publish_to_error_queue(payload)
+            # self.publish(payload, topic='ads.deploy.status')
+            self.forward(payload)
+            self.publish_to_error_queue(payload, header_frame=header_frame)
 
 
 class AfterDeploy(RabbitMQWorker):

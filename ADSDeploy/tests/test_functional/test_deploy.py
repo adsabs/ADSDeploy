@@ -10,7 +10,7 @@ import json
 import unittest
 import ADSDeploy.app as app
 
-from ADSDeploy.pipeline.workers import BeforeDeploy, DatabaseWriterWorker
+from ADSDeploy.pipeline.workers import Deploy, DatabaseWriterWorker
 from ADSDeploy.webapp.views import MiniRabbit
 from ADSDeploy.models import Base, Deployment
 
@@ -18,7 +18,7 @@ RABBITMQ_URL = 'amqp://guest:guest@172.17.0.1:6672/?' \
                'socket_timeout=10&backpressure_detection=t'
 
 
-class TestBeforeDeployWorker(unittest.TestCase):
+class TestDeployWorker(unittest.TestCase):
     """
     Tests the functionality of the Before Deploy worker
     """
@@ -51,11 +51,11 @@ class TestBeforeDeployWorker(unittest.TestCase):
         Base.metadata.drop_all()
         self.app.close_app()
 
-    @mock.patch('ADSDeploy.pipeline.deploy.is_timedout')
-    def test_before_deploy_fails(self, mock_is_timedout):
+    @mock.patch('ADSDeploy.pipeline.deploy.create_executioner')
+    def test_deploy_fails(self, mock_executioner):
         """
-        Test that the correct database entires are made by BeforeDeploy worker
-        when the worker fails on its actions
+        Test that when the deploy fails the correct entries are sent and stored
+        in the backend database
         """
         # Worker receives a packet, most likely from the webapp
         # Example packet:
@@ -74,97 +74,9 @@ class TestBeforeDeployWorker(unittest.TestCase):
         }
 
         # Override the run test returned value. This means the logic of the test
-        # does not have to be mocked
-        mock_is_timedout.return_value = True
-
-        with MiniRabbit(RABBITMQ_URL) as w:
-            w.publish(route='in', exchange='test', payload=json.dumps(packet))
-
-        # Worker runs the tests
-        params = {
-            'RABBITMQ_URL': RABBITMQ_URL,
-            'exchange': 'test',
-            'subscribe': 'in',
-            'publish': 'out',
-            'header_frame': None,
-            'error': 'error',
-            'forwarding': {
-                'publish': 'database',
-                'exchange': 'test'
-            },
-            'TEST_RUN': True
-        }
-        before_deploy_worker = BeforeDeploy(params=params)
-        before_deploy_worker.run()
-        before_deploy_worker.connection.close()
-
-        # Worker sends a packet to the next worker
-        with MiniRabbit(RABBITMQ_URL) as w:
-            self.assertEqual(w.message_count('in'), 0)
-            self.assertEqual(w.message_count('out'), 0)
-            self.assertEqual(w.message_count('database'), 1)
-            self.assertEqual(w.message_count('error'), 1)
-
-        # Start the DB Writer worker
-        params = {
-            'RABBITMQ_URL': RABBITMQ_URL,
-            'exchange': 'test',
-            'subscribe': 'database',
-            'TEST_RUN': True
-        }
-        db_worker = DatabaseWriterWorker(params=params)
-        db_worker.app = self.app
-        db_worker.run()
-        db_worker.connection.close()
-
-        with self.app.session_scope() as session:
-
-            all_deployments = session.query(Deployment).all()
-            self.assertEqual(
-                len(all_deployments),
-                1,
-                msg='More (or less) than 1 deployment entry: {}'
-                    .format(all_deployments)
-            )
-            deployment = all_deployments[0]
-
-            for key in packet:
-                self.assertEqual(
-                    packet[key],
-                    getattr(deployment, key)
-                )
-            self.assertEqual(deployment.deployed, False)
-            self.assertEqual(
-                deployment.msg,
-                'BeforeDeploy: waiting too long for the environment to come up'
-            )
-
-    @mock.patch('ADSDeploy.pipeline.deploy.create_executioner')
-    def test_before_deploy_passes(self, mock_executioner):
-        """
-        Test that the correct database entires are made by BeforeDeploy worker
-        when the worker succeeds on its actions
-        """
-        # Worker receives a packet, most likely from the webapp
-        # Example packet:
-        #
-        #  {
-        #    'application': 'staging',
-        #    '....': '....',
-        #  }a
-        #
-        #
-        packet = {
-            'environment': 'staging',
-            'application': 'adsws',
-            'tag': 'v1.0.0',
-            'commit': 'gf9gd8f',
-        }
-
-        # Override the run test returned value. This means the logic of the test
-        # does not have to be mocked
-        mock_r = mock.Mock(retcode=0)
-        mock_r.out.splitlines.return_value = []
+        # does not have to be mocked. retcode = 1 means it has failed
+        mock_r = mock.Mock(retcode=1, command='r-command', err='r-err',
+                           out='r-out')
 
         mock_x = mock_executioner.return_value
         mock_x.cmd.return_value = mock_r
@@ -186,15 +98,109 @@ class TestBeforeDeployWorker(unittest.TestCase):
             },
             'TEST_RUN': True
         }
-        before_deploy_worker = BeforeDeploy(params=params)
-        before_deploy_worker.run()
-        before_deploy_worker.connection.close()
+        deploy_worker = Deploy(params=params)
+        deploy_worker.run()
+        deploy_worker.connection.close()
+
+        # Worker sends a packet to the next worker
+        with MiniRabbit(RABBITMQ_URL) as w:
+            self.assertEqual(w.message_count('in'), 0)
+            self.assertEqual(w.message_count('out'), 0)
+            self.assertEqual(w.message_count('database'), 2)
+            self.assertEqual(w.message_count('error'), 1)
+
+        # Start the DB Writer worker
+        params = {
+            'RABBITMQ_URL': RABBITMQ_URL,
+            'exchange': 'test',
+            'subscribe': 'database',
+            'TEST_RUN': True
+        }
+
+        # First message should be starting of the deployment
+        db_worker = DatabaseWriterWorker(params=params)
+        db_worker.app = self.app
+        db_worker.run()
+        with self.app.session_scope() as session:
+            deployment = session.query(Deployment)\
+                .filter(Deployment.commit == 'gf9gd8f').one()
+            self.assertEqual(
+                deployment.msg,
+                'staging-adsws deployment starts'
+            )
+            self.assertIsNone(deployment.deployed)
+
+        db_worker.run()
+        with self.app.session_scope() as session:
+            deployment = session.query(Deployment)\
+                .filter(Deployment.commit == 'gf9gd8f').one()
+
+            for key in packet:
+                self.assertEqual(
+                    packet[key],
+                    getattr(deployment, key)
+                )
+            self.assertFalse(deployment.deployed)
+            self.assertEqual(
+                deployment.msg,
+                'deployment failed; command: r-command, reason: r-err, stdout: r-out'
+            )
+
+    @mock.patch('ADSDeploy.pipeline.deploy.create_executioner')
+    def test_deploy_succeeds(self, mock_executioner):
+        """
+        Test that when the deploy succeeds the correct entries are sent and
+        stored in the backend database
+        """
+        # Worker receives a packet, most likely from the webapp
+        # Example packet:
+        #
+        #  {
+        #    'application': 'staging',
+        #    '....': '....',
+        #  }
+        #
+        #
+        packet = {
+            'environment': 'staging',
+            'application': 'adsws',
+            'tag': 'v1.0.0',
+            'commit': 'gf9gd8f',
+        }
+
+        # Override the run test returned value. This means the logic of the test
+        # does not have to be mocked. retcode = 1 means it has failed
+        mock_r = mock.Mock(retcode=0)
+
+        mock_x = mock_executioner.return_value
+        mock_x.cmd.return_value = mock_r
+
+        with MiniRabbit(RABBITMQ_URL) as w:
+            w.publish(route='in', exchange='test', payload=json.dumps(packet))
+
+        # Worker runs the tests
+        params = {
+            'RABBITMQ_URL': RABBITMQ_URL,
+            'exchange': 'test',
+            'subscribe': 'in',
+            'publish': 'out',
+            'header_frame': None,
+            'error': 'error',
+            'forwarding': {
+                'publish': 'database',
+                'exchange': 'test'
+            },
+            'TEST_RUN': True
+        }
+        deploy_worker = Deploy(params=params)
+        deploy_worker.run()
+        deploy_worker.connection.close()
 
         # Worker sends a packet to the next worker
         with MiniRabbit(RABBITMQ_URL) as w:
             self.assertEqual(w.message_count('in'), 0)
             self.assertEqual(w.message_count('out'), 1)
-            self.assertEqual(w.message_count('database'), 1)
+            self.assertEqual(w.message_count('database'), 2)
             self.assertEqual(w.message_count('error'), 0)
 
         # Start the DB Writer worker
@@ -204,29 +210,32 @@ class TestBeforeDeployWorker(unittest.TestCase):
             'subscribe': 'database',
             'TEST_RUN': True
         }
+
+        # First message should be starting of the deployment
         db_worker = DatabaseWriterWorker(params=params)
         db_worker.app = self.app
         db_worker.run()
-        db_worker.connection.close()
-
         with self.app.session_scope() as session:
-
-            all_deployments = session.query(Deployment).all()
+            deployment = session.query(Deployment)\
+                .filter(Deployment.commit == 'gf9gd8f').one()
             self.assertEqual(
-                len(all_deployments),
-                1,
-                msg='More (or less) than 1 deployment entry: {}'
-                    .format(all_deployments)
+                deployment.msg,
+                'staging-adsws deployment starts'
             )
-            deployment = all_deployments[0]
+            self.assertIsNone(deployment.deployed)
+
+        db_worker.run()
+        with self.app.session_scope() as session:
+            deployment = session.query(Deployment)\
+                .filter(Deployment.commit == 'gf9gd8f').one()
 
             for key in packet:
                 self.assertEqual(
                     packet[key],
                     getattr(deployment, key)
                 )
-            self.assertEqual(deployment.deployed, None)
+            self.assertTrue(deployment.deployed)
             self.assertEqual(
                 deployment.msg,
-                'OK to deploy'
+                'deployed'
             )
