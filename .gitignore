@@ -69,3 +69,7 @@ python/*
 
 # Personal logs
 logs/*
+
+eb-deploy
+eb-deploy-key
+aws_config

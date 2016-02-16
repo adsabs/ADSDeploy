@@ -5,8 +5,8 @@ git config --global user.email "anon@anon.com"
 cd /app
 
 
-git fetch
 git fetch --tags
+git pull
 
 latest_tag=`git describe --tags $(git rev-list --tags --max-count=1)`
 
