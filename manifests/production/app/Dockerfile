@@ -2,7 +2,7 @@ FROM phusion/baseimage:0.9.17
 
 
 RUN apt-get update --fix-missing
-RUN apt-get install -y python-pip ipython python-dev libpq-dev git python-virtualenv
+RUN apt-get install -y python-pip ipython python-dev libpq-dev git python-virtualenv gunicorn
 RUN pip install --upgrade pip
 
 RUN mkdir -p /etc/service/app
@@ -36,4 +36,8 @@ RUN mkdir -p /etc/service/app
 ADD run /etc/service/app/run
 RUN chmod +x /etc/service/app/run
 
-CMD /bin/bash
+RUN mkdir -p /etc/service/webapp
+ADD run_webapp /etc/service/webapp/run
+RUN chmod +x /etc/service/webapp/run
+
+CMD ["/sbin/my_init"]

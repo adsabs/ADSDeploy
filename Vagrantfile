@@ -59,6 +59,7 @@ Vagrant.configure("2") do |config|
         d.has_ssh = false
         d.name = "ADSDeploy"
         d.remains_running = true
+        d.ports = ["9001:9000"]
         #d.create_args = ["-e", "AWS_ACCESS_KEY=" + ENV['AWS_ACCESS_KEY'], "-e", "AWS_SECRET_KEY=" + ENV['AWS_SECRET_KEY']] 
       end
     end

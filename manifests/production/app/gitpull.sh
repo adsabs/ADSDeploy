@@ -24,6 +24,8 @@ git checkout --force $latest_tag
 
 #Provision libraries/database
 pip install -r requirements.txt
+pip install -r web-requirements.txt
+
 alembic upgrade head
 
 echo $latest_tag > latest-production
