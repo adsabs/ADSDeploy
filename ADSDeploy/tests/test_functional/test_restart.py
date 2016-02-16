@@ -10,7 +10,7 @@ import json
 import unittest
 import ADSDeploy.app as app
 
-from ADSDeploy.pipeline.workers import Deploy, DatabaseWriterWorker
+from ADSDeploy.pipeline.workers import Restart, DatabaseWriterWorker
 from ADSDeploy.webapp.views import MiniRabbit
 from ADSDeploy.models import Base, Deployment
 
@@ -18,7 +18,7 @@ RABBITMQ_URL = 'amqp://guest:guest@172.17.0.1:6672/adsdeploy_test?' \
                'socket_timeout=10&backpressure_detection=t'
 
 
-class TestDeployWorker(unittest.TestCase):
+class TestRestartWorker(unittest.TestCase):
     """
     Tests the functionality of the Before Deploy worker
     """
@@ -52,10 +52,10 @@ class TestDeployWorker(unittest.TestCase):
         self.app.close_app()
 
     @mock.patch('ADSDeploy.pipeline.deploy.create_executioner')
-    def test_deploy_fails(self, mock_executioner):
+    def test_restart_fails(self, mock_executioner):
         """
-        Test that when the deploy fails the correct entries are sent and stored
-        in the backend database
+        Test that when a restart is requested, and the restart worker fails,
+        the messages are updated
         """
         # Worker receives a packet, most likely from the webapp
         # Example packet:
@@ -73,22 +73,10 @@ class TestDeployWorker(unittest.TestCase):
             'commit': 'gf9gd8f',
         }
 
-        # Stub the database with some early entries
-        first_deployment = Deployment(
-            environment=packet['environment'],
-            application=packet['application'],
-            tag='v0.0.1',
-            commit='adsfadsf',
-            deployed=True
-        )
-        with self.app.session_scope() as session:
-            session.add(first_deployment)
-            session.commit()
-
         # Override the run test returned value. This means the logic of the test
         # does not have to be mocked. retcode = 1 means it has failed
-        mock_r = mock.Mock(retcode=1, command='r-command', err='r-err',
-                           out='r-out')
+        mock_r = mock.MagicMock(retcode=1)
+        mock_r.__str__.return_value = 'restart failed'
 
         mock_x = mock_executioner.return_value
         mock_x.cmd.return_value = mock_r
@@ -107,9 +95,9 @@ class TestDeployWorker(unittest.TestCase):
             'status': 'database',
             'TEST_RUN': True
         }
-        deploy_worker = Deploy(params=params)
-        deploy_worker.run()
-        deploy_worker.connection.close()
+        restart_worker = Restart(params=params)
+        restart_worker.run()
+        restart_worker.connection.close()
 
         # Worker sends a packet to the next worker
         with MiniRabbit(RABBITMQ_URL) as w:
@@ -135,13 +123,9 @@ class TestDeployWorker(unittest.TestCase):
                 .filter(Deployment.commit == 'gf9gd8f').one()
             self.assertEqual(
                 deployment.msg,
-                'staging-adsws deployment starts'
+                'staging-adsws restart-soft starts'
             )
             self.assertIsNone(deployment.deployed)
-
-            deployment = session.query(Deployment)\
-                .filter(Deployment.tag == 'v0.0.1').one()
-            self.assertTrue(deployment.deployed)
 
         db_worker.run()
         with self.app.session_scope() as session:
@@ -156,19 +140,14 @@ class TestDeployWorker(unittest.TestCase):
             self.assertFalse(deployment.deployed)
             self.assertEqual(
                 deployment.msg,
-                'deployment failed; command: r-command, reason: r-err, stdout: r-out'
+                'restart failed'
             )
 
-            deployment = session.query(Deployment)\
-                .filter(Deployment.tag == 'v0.0.1').one()
-
-            self.assertTrue(deployment.deployed)
-
     @mock.patch('ADSDeploy.pipeline.deploy.create_executioner')
-    def test_deploy_succeeds(self, mock_executioner):
+    def test_restart_succeeds(self, mock_executioner):
         """
-        Test that when the deploy succeeds the correct entries are sent and
-        stored in the backend database
+        Test that when a restart is requested, and the restart worker succeeds,
+        the messages are updated
         """
         # Worker receives a packet, most likely from the webapp
         # Example packet:
@@ -186,21 +165,9 @@ class TestDeployWorker(unittest.TestCase):
             'commit': 'gf9gd8f',
         }
 
-        # Stub the database with some early entries
-        first_deployment = Deployment(
-            environment=packet['environment'],
-            application=packet['application'],
-            tag='v0.0.1',
-            commit='adsfadsf',
-            deployed=True
-        )
-        with self.app.session_scope() as session:
-            session.add(first_deployment)
-            session.commit()
-
         # Override the run test returned value. This means the logic of the test
         # does not have to be mocked. retcode = 1 means it has failed
-        mock_r = mock.Mock(retcode=0)
+        mock_r = mock.MagicMock(retcode=0)
 
         mock_x = mock_executioner.return_value
         mock_x.cmd.return_value = mock_r
@@ -219,9 +186,9 @@ class TestDeployWorker(unittest.TestCase):
             'status': 'database',
             'TEST_RUN': True
         }
-        deploy_worker = Deploy(params=params)
-        deploy_worker.run()
-        deploy_worker.connection.close()
+        restart_worker = Restart(params=params)
+        restart_worker.run()
+        restart_worker.connection.close()
 
         # Worker sends a packet to the next worker
         with MiniRabbit(RABBITMQ_URL) as w:
@@ -247,13 +214,9 @@ class TestDeployWorker(unittest.TestCase):
                 .filter(Deployment.commit == 'gf9gd8f').one()
             self.assertEqual(
                 deployment.msg,
-                'staging-adsws deployment starts'
+                'staging-adsws restart-soft starts'
             )
             self.assertIsNone(deployment.deployed)
-
-            deployment = session.query(Deployment)\
-                .filter(Deployment.tag == 'v0.0.1').one()
-            self.assertTrue(deployment.deployed)
 
         db_worker.run()
         with self.app.session_scope() as session:
@@ -265,12 +228,8 @@ class TestDeployWorker(unittest.TestCase):
                     packet[key],
                     getattr(deployment, key)
                 )
-            self.assertTrue(deployment.deployed)
+            self.assertFalse(deployment.deployed)
             self.assertEqual(
                 deployment.msg,
-                'deployed'
+                'restart succeeded'
             )
-
-            deployment = session.query(Deployment)\
-                .filter(Deployment.tag == 'v0.0.1').one()
-            self.assertFalse(deployment.deployed)

@@ -7,7 +7,6 @@ It then shuts down all of the workers.
 """
 
 
-import json
 import unittest
 import requests
 
@@ -18,6 +17,10 @@ from ADSDeploy.config import RABBITMQ_URL, WEBAPP_URL
 class TestWebApp(unittest.TestCase):
     """
     Test the interactions of the webapp with other services, such as RabbitMQ
+
+    Note: this only works when assuming that the exchange set by RabbitMQ in
+    the configuration file has been used. Specifically, EXCHANGE='test', and
+    ROUTE='test', used to define the queue for the webapp.
     """
 
     def setUp(self):
@@ -35,13 +38,14 @@ class TestWebApp(unittest.TestCase):
 
         url = 'http://{}/command'.format(WEBAPP_URL)
 
-        payload = {
+        params = {
             'application': 'staging',
             'environment': 'adsws',
-            'commit': 's23rfef3',
+            'version': 's23rfef3',
+            'action': 'deploy'
         }
 
-        r = requests.post(url, data=json.dumps(payload))
+        r = requests.get(url, params=params)
 
         self.assertEqual(r.status_code, 200)
 
@@ -59,8 +63,8 @@ class TestWebApp(unittest.TestCase):
 
         self.assertEqual(
             packet,
-            payload,
-            msg='Packet received {} != payload sent {}'.format(packet, payload)
+            params,
+            msg='Packet received {} != payload sent {}'.format(packet, params)
         )
 
 

@@ -4,8 +4,6 @@ from ADSDeploy.models import KeyValue
 import os
 import time
 import threading
-from ADSDeploy.tests.test_unit.stub_data.stub_webapp import payload_tag
-from __builtin__ import True
 
 
 def create_executioner(payload):
@@ -57,7 +55,7 @@ class BeforeDeploy(RabbitMQWorker):
             payload['msg'] = 'BeforeDeploy: waiting too long for the environment to come up'
             payload['deployed'] = False
 
-            self.forward(payload)
+            self.publish(payload, topic=self.params['status'])
 
             return self.publish_to_error_queue(payload,
                                                header_frame=header_frame)
@@ -72,9 +70,12 @@ class BeforeDeploy(RabbitMQWorker):
         
         for l in r.out.splitlines():
             parts = l.split()
-            if len(parts) > 1 and parts[0] != 'Ready': # the environment is not ready, we have to wait
+
+            # the environment is not ready, we have to wait
+            if len(parts) > 1 and parts[0] != 'Ready':
                 
-                # re-publish the payload to the queue, but do not block the worker
+                # re-publish the payload to the queue,
+                # but do not block the worker
                 def run(payload, worker):
                     if not 'init_timestamp' in payload:
                         payload['init_timestamp'] = time.time()
@@ -86,15 +87,15 @@ class BeforeDeploy(RabbitMQWorker):
         if action == 'deploy':
             payload['msg'] = 'OK to deploy'
             self.publish(payload, topic='ads.deploy.deploy')
+            self.publish(payload, topic=self.params['status'])
         elif action.startswith('restart'):
+            payload['msg'] = 'Deploy to be restarted'
             self.publish(payload, topic='ads.deploy.restart')
+            self.publish(payload, topic=self.params['status'])
         else:
             raise Exception('Unknown action {0}'.format(action))
-        
 
-        
 
-        
 class Deploy(RabbitMQWorker):
     """
     A wrapper around the eb-deploy's safe-deploy.sh script.
@@ -110,24 +111,26 @@ class Deploy(RabbitMQWorker):
         """Runs the actual deployment. It calls the eb-deploy safe-deploy.sh."""
         
         x = create_executioner(payload)
-        payload['msg'] = '{0}-{1} deployment starts'.format(payload['environment'], payload['application'])
-        self.forward(payload)
+        payload['msg'] = '{0}-{1} deployment starts'\
+            .format(payload['environment'], payload['application'])
+        self.publish(payload, topic=self.params['status'])
 
         # this will run for a few minutes!
-        r = x.cmd('./safe-deploy.sh {0} > /tmp/deploy.{0}.{1}'.format(payload['environment'], payload['application']))
+        r = x.cmd('./safe-deploy.sh {0} > /tmp/deploy.{0}.{1}'
+                  .format(payload['environment'], payload['application']))
         if r.retcode == 0:
             payload['deployed'] = True
             payload['msg'] = 'deployed'
-            self.forward(payload)
             self.publish(payload)
+            self.publish(payload, topic=self.params['status'])
         else:
             payload['err'] = 'deployment failed'
             payload['deployed'] = False
             payload['msg'] = 'deployment failed; command: {0}, reason: {1}, ' \
                              'stdout: {2}'.format(r.command, r.err, r.out)
-            # self.publish(payload, topic='ads.deploy.status')
-            self.forward(payload)
+
             self.publish_to_error_queue(payload, header_frame=header_frame)
+            self.publish(payload, topic=self.params['status'])
 
 
 class Restart(RabbitMQWorker):
@@ -148,7 +151,7 @@ class Restart(RabbitMQWorker):
         payload['msg'] = '{0}-{1} {2} starts'.format(payload['environment'], 
                                                      payload['application'],
                                                      action)
-        self.publish(payload, topic='ads.deploy.status')
+        self.publish(payload, topic=self.params['status'])
         
         r = None
         if action == 'restart-soft':
@@ -159,10 +162,13 @@ class Restart(RabbitMQWorker):
             self.publish_to_error_queue(payload)
             
         if r and r.retcode == 0:
+            payload['msg'] = 'restart succeeded'
             self.publish(payload)
+            self.publish(payload, topic=self.params['status'])
         else:
             payload['msg'] = str(r)
-            self.publish_to_error_queue(payload)
+            self.publish_to_error_queue(payload, header_frame=header_frame)
+            self.publish(payload, topic=self.params['status'])
         
             
 class AfterDeploy(RabbitMQWorker):

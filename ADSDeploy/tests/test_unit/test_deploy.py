@@ -48,9 +48,12 @@ class TestWorkers(test_base.TestUnit):
         # BeforeDeploy requires EB_DEPLOY path to exist
         exists.return_value = True
 
-        worker = BeforeDeploy()
+        worker = BeforeDeploy(params={'status': 'ads.deploy.status'})
         worker.process_payload({'application': 'sandbox', 'environment': 'adsws'})
-        worker.publish.assert_called_with({'environment': 'adsws', 'application': 'sandbox', 'msg': 'OK to deploy'})
+        worker.publish.assert_has_calls([
+            mock.call({'environment': 'adsws', 'application': 'sandbox', 'msg': 'OK to deploy'},topic='ads.deploy.deploy'),
+            mock.call({'environment': 'adsws', 'application': 'sandbox', 'msg': 'OK to deploy'},topic='ads.deploy.status')
+        ])
 
     def test_deploy_after_deploy(self):
         """Test after deploy"""

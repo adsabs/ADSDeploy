@@ -15,7 +15,7 @@ from ADSDeploy.pipeline.workers import IntegrationTestWorker, \
 from ADSDeploy.webapp.views import MiniRabbit
 from ADSDeploy.models import Base, Deployment
 
-RABBITMQ_URL = 'amqp://guest:guest@172.17.0.1:6672/?' \
+RABBITMQ_URL = 'amqp://guest:guest@172.17.0.1:6672/adsdeploy_test?' \
                'socket_timeout=10&backpressure_detection=t'
 
 
@@ -91,6 +91,7 @@ class TestIntegrationTestWorker(unittest.TestCase):
             'exchange': 'test',
             'subscribe': 'in',
             'publish': 'out',
+            'status': 'database',
             'TEST_RUN': True
         }
         test_worker = IntegrationTestWorker(params=params)
@@ -137,10 +138,7 @@ class TestIntegrationTestWorker(unittest.TestCase):
             'exchange': 'test',
             'subscribe': 'in',
             'publish': 'out',
-            'forwarding': {
-                'publish': 'database',
-                'exchange': 'test'
-            },
+            'status': 'database',
             'TEST_RUN': True
         }
 
