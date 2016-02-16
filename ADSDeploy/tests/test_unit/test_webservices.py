@@ -107,10 +107,12 @@ class TestEndpoints(TestCase):
         self.assertStatus(r, 200)
         self.assertEqual(r.json['msg'], 'success')
 
-        mocked_gh.push_rabbitmq.assert_has_calls(
-            [mock.call(params, exchange='unit-test-exchange',
-                       route='unit-test-route')]
-        )
+        params['commit'] = params['version']
+        mocked_gh.push_rabbitmq.assert_has_calls([mock.call(
+            params,
+            exchange='unit-test-exchange',
+            route='unit-test-route'
+        )])
 
     @mock.patch('ADSDeploy.webapp.views.GithubListener')
     def test_commandview_missing_payload(self, mocked_gh):
