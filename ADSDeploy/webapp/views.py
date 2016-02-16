@@ -142,6 +142,79 @@ class MiniRabbit(object):
         )
 
 
+class StatusView(Resource):
+    """
+    Status view
+    """
+    def get(self):
+        """
+        Return the list of active services. There should only be on active
+        environment+application, with deployment.deployed == True. Deployments
+        with deployment.deployed == False, are added to the 'previous_commits'
+        key. Multiple active deployments is worrying, and any active deployments
+        are included to the 'active' list. If there is more than 1, it means
+        there is duplication, or an issue soemwhere.
+        """
+
+        deployments = db.session.query(Deployment).all()
+
+        # This is a bit more verbose, but it is more legible if some one else
+        # were to read this code, rather than the optimised version that would
+        # do a single request to the database
+
+        identifiers = ['{}-{}'.format(
+            deployment.environment, deployment.application
+        ) for deployment in deployments]
+        identifiers = list(set(identifiers))
+
+        active = {}
+
+        for identifier in identifiers:
+            env, app = identifier.split('-')
+            deployments = db.session.query(Deployment).filter(
+                Deployment.environment == env,
+                Deployment.application == app
+            ).all()
+
+            if len(deployments) > 0:
+                active[identifier] = {}
+                active[identifier]['previous_versions'] = []
+                active[identifier]['active'] = []
+            else:
+                continue
+
+            for deployment in deployments:
+                if deployment.deployed:
+                    active[identifier].update(deployment.toJSON())
+                    active[identifier]['active'].append(deployment.commit)
+                else:
+                    active[identifier]['previous_versions']\
+                        .append(deployment.commit)
+
+        # Less verbose, a little more thought required to understand
+        # active = {}
+        # for deployment in deployments:
+        #
+        #     identifier = '{}-{}'.format(
+        #         deployment.environment, deployment.application
+        #     )
+        #
+        #     if deployment.deployed:
+        #
+        #         active.setdefault(identifier, {}).update(deployment.toJSON())
+        #
+        #         active[identifier].setdefault('active', [])\
+        #             .append(deployment.commit)
+        #
+        #         continue
+        #
+        #     active.setdefault(identifier, {})\
+        #         .setdefault('previous_versions', [])\
+        #         .append(deployment.commit)
+
+        return active.values(), 200
+
+
 class RabbitMQ(Resource):
     """
     RabbitMQ Testing Proxy
@@ -171,29 +244,29 @@ class CommandView(Resource):
     RabbitMQ Proxy
     """
 
-    def post(self):
+    def get(self):
         """
         A proxy end point that forwards commands from the UI to the worker that
         makes the correct decision. It does minor checks on the keywords passed
         to the end point.
         """
 
-        payload = request.get_json(force=True)
-
         required_keywords = [
             'application',
             'environment',
-            'commit'
+            'version',
+            'action'
         ]
+        args = {k: request.args[k] for k in required_keywords}
 
         for key in required_keywords:
-            if key not in payload.keys():
+            if key not in args.keys():
                 current_app.logger.error('Missing keyword "{}" from payload: {}'
-                                         .format(key, payload))
+                                         .format(key, args))
                 abort(400, 'Missing keyword: {}'.format(key))
 
         GithubListener.push_rabbitmq(
-            payload,
+            args,
             exchange=current_app.config.get('EXCHANGE'),
             route=current_app.config.get('ROUTE')
         )
@@ -278,7 +351,7 @@ class GithubListener(Resource):
         formatted_request = request.get_json(force=True)
 
         payload = {
-            'repository': formatted_request['repository']['name'],
+            'application': formatted_request['repository']['name'],
             'commit': formatted_request['head_commit']['id'],
             'environment': 'sandbox',
             'author': formatted_request['head_commit']['author']['username'],
@@ -315,7 +388,7 @@ class GithubListener(Resource):
             route=current_app.config.get('ROUTE')
         )
 
-        return {'received': '{}@{}:{}'.format(payload['repository'],
+        return {'received': '{}@{}:{}'.format(payload['application'],
                                               payload['commit'],
                                               payload['environment'])}
 
@@ -365,8 +438,18 @@ def connect_status():
     """
     When someone first connects to the WebSocket namespace /status
     """
-    all_deployments = db.session.query(Deployment).all()
     emit(
         'connect',
-        [deployment.toJSON() for deployment in all_deployments]
+        'connected'
+    )
+
+
+@socketio.on('disconnect', namespace='/status')
+def connect_status():
+    """
+    When someone first connects to the WebSocket namespace /status
+    """
+    emit(
+        'disconnect',
+        'disconnected'
     )

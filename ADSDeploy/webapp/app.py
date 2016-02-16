@@ -8,7 +8,7 @@ import os
 from flask import Flask
 from flask.ext.restful import Api
 from .views import GithubListener, CommandView, socketio, \
-    after_insert, after_update, RabbitMQ
+    after_insert, after_update, RabbitMQ, StatusView
 from .models import db, Deployment
 
 
@@ -32,8 +32,9 @@ def create_app(name='ADSDeploy'):
     # Register extensions
     api = Api(app)
     api.add_resource(GithubListener, '/webhooks', methods=['POST'])
-    api.add_resource(CommandView, '/command', methods=['POST'])
+    api.add_resource(CommandView, '/command', methods=['GET'])
     api.add_resource(RabbitMQ, '/rabbitmq', methods=['POST'])
+    api.add_resource(StatusView, '/status', methods=['GET'])
 
     # Register any WebSockets
     socketio.init_app(app)

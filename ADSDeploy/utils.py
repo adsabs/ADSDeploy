@@ -39,7 +39,7 @@ def get_date(timestr=None):
     Always parses the time to be in the UTC time zone; or returns
     the current date (with UTC timezone specified)
     
-    :param: timestr
+    :param timestr: time string
     :type: str or None
     
     :return: datetime object with tzinfo=tzutc()
@@ -86,6 +86,7 @@ def load_config():
     
     return conf
 
+
 def load_module(filename):
     """
     Loads module, first from config.py then from local_config.py
@@ -104,6 +105,7 @@ def load_module(filename):
     res = {}
     from_object(d, res)
     return res
+
 
 def setup_logging(file_, name_, level='DEBUG'):
     """

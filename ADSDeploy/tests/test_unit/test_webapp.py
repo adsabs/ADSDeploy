@@ -133,7 +133,7 @@ class TestStaticMethodUtilities(TestCase):
         r.data = github_payload
         c = GithubListener.parse_github_payload(r)
         self.assertEqual(
-            c['repository'],
+            c['application'],
             'adsws'
         )
         self.assertEqual(
@@ -141,7 +141,7 @@ class TestStaticMethodUtilities(TestCase):
             None
         )
 
-        for key in ['repository', 'environment', 'commit', 'author', 'tag']:
+        for key in ['application', 'environment', 'commit', 'author', 'tag']:
             self.assertIn(
                 key,
                 c,
@@ -160,7 +160,7 @@ class TestStaticMethodUtilities(TestCase):
 
         c = GithubListener.parse_github_payload(r)
         self.assertEqual(
-            c['repository'],
+            c['application'],
             'adsws'
         )
         self.assertEqual(
@@ -168,7 +168,7 @@ class TestStaticMethodUtilities(TestCase):
             'v1.0.0'
         )
 
-        for key in ['repository', 'environment', 'commit', 'author', 'tag']:
+        for key in ['application', 'environment', 'commit', 'author', 'tag']:
             self.assertIn(
                 key,
                 c,
@@ -188,7 +188,7 @@ class TestStaticMethodUtilities(TestCase):
         instance_rabbit.publish.side_effect = None
 
         payload = OrderedDict([
-            ('repository', 'important-service'),
+            ('application', 'important-service'),
             ('commit', 'd8fgdfgdf'),
             ('environment', 'staging'),
             ('author', 'author'),
