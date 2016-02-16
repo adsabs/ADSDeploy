@@ -2,7 +2,7 @@ FROM phusion/baseimage:0.9.17
 
 
 RUN apt-get update --fix-missing
-RUN apt-get install -y python-pip ipython python-dev libpq-dev git python-virtualenv gunicorn
+RUN apt-get install -y python-pip ipython python-dev libpq-dev git python-virtualenv gunicorn zip
 RUN pip install --upgrade pip
 
 RUN mkdir -p /etc/service/app
