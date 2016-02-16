@@ -48,6 +48,11 @@ class Deployment(Base):
     deployed = Column(Boolean, nullable=True)
     tested = Column(Boolean, nullable=True)
     msg = Column(String)
+    status = Column(String)
+
+    @property
+    def version(self):
+        return self.tag if self.tag else self.commit
 
     def toJSON(self):
         """
@@ -59,11 +64,13 @@ class Deployment(Base):
             'environment': self.environment,
             'commit': self.commit,
             'tag': self.tag,
+            'version': self.version,
             'date_created': self.date_created.isoformat(),
             'date_last_modified': self.date_last_modified.isoformat(),
             'deployed': self.deployed,
             'tested': self.tested,
-            'msg': self.msg
+            'msg': self.msg,
+            'status': self.status
         }
 
     def __repr__(self):
@@ -76,11 +83,13 @@ class Deployment(Base):
             '\tenvironment: {}'.format(self.environment),
             '\tcommit: {}'.format(self.commit),
             '\ttag: {}'.format(self.tag),
+            '\tversion: {}'.format(self.version),
             '\tdate_created: {}'.format(self.date_created),
             '\tdate_last_modified: {}'.format(self.date_last_modified),
             '\tdeployed: {}'.format(self.deployed),
             '\ttested: {}'.format(self.tested),
-            '\tmsg: {}'.format(self.msg)
+            '\tmsg: {}'.format(self.msg),
+            '\tstatus: {}'.format(self.status)
         ]
 
         return '<Deployment (\n{}\n)>'.format(', \n'.join(_repr))

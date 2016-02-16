@@ -7,17 +7,14 @@ It then shuts down all of the workers.
 """
 
 
+import os
 import unittest
-import time
-import json
-import sys
+
 from ADSDeploy.tests import test_base
 from ADSDeploy.pipeline import deploy
 from ADSDeploy.pipeline.deploy import BeforeDeploy, Deploy, AfterDeploy
-from ADSDeploy import app, models
-import ADSDeploy.pipeline.deploy
-import threading
-from mock import patch, MagicMock
+from mock import patch
+
 
 class TestPipeline(test_base.TestFunctional):
     """
@@ -27,7 +24,6 @@ class TestPipeline(test_base.TestFunctional):
     Make sure you have the correct values set in the local_config.py
     These tests will use that config.
     """
-
 
     #@patch.object(BeforeDeploy, 'publish', lambda self, payload: self.channel.stop_consuming())
     def xtest_before_deploy_worker(self):
@@ -48,7 +44,10 @@ class TestPipeline(test_base.TestFunctional):
                                         topic='ads.deploy.before_deploy')
             worker.run()
 
-
+    @unittest.skipIf(
+        not os.environ.get('EB_DEPLOY_HOME'),
+        'Environment key "EB_DEPLOY_HOME" is missing.'
+    )
     def test_deploy_worker(self):
         """
         For this, you need to have 'db' and 'rabbitmq' containers running.
@@ -76,7 +75,6 @@ class TestPipeline(test_base.TestFunctional):
                 assert oldp[4] != newp[4]
             finally:
                 self.channel.stop_consuming()
-            
             
         with patch.object(Deploy, 'publish', test):
             worker = Deploy(params={'RABBITMQ_URL': self.TM.rabbitmq_url, 

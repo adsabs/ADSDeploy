@@ -146,5 +146,50 @@ class TestDatabaseWriterWorker(unittest.TestCase):
             with self.assertRaises(KeyError):
                 worker.process_payload(payload)
 
+    def test_worker_updates_deployed_status(self):
+        """
+        When a new service is successful in being deployed, it should update any
+        other service with the same env/app combination to not being deployed.
+        There is most likely a smarter way to do this....
+        """
+
+        first_payload = {
+            'application': 'staging',
+            'environment': 'adsws',
+            'commit': 'first-commit',
+            'tag': 'first-tag',
+            'deployed': True,
+            'tested': False
+        }
+        second_payload = {
+            'application': 'staging',
+            'environment': 'adsws',
+            'commit': 'second-commit',
+            'tag': 'second-tag',
+            'deployed': True,
+            'tested': False
+        }
+
+        worker = DatabaseWriterWorker()
+        worker.process_payload(first_payload)
+
+        with self.app.session_scope() as session:
+            deployment = session.query(Deployment).filter(
+                Deployment.commit == 'first-commit'
+            ).one()
+            self.assertTrue(deployment.deployed)
+
+        worker.process_payload(second_payload)
+        with self.app.session_scope() as session:
+            deployment_2 = session.query(Deployment).filter(
+                Deployment.commit == 'second-commit'
+            ).one()
+            self.assertTrue(deployment_2.deployed)
+
+            deployment_1 = session.query(Deployment).filter(
+                Deployment.commit == 'first-commit'
+            ).one()
+            self.assertFalse(deployment_1.deployed)
+
 if __name__ == '__main__':
     unittest.main()

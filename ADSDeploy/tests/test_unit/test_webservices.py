@@ -30,6 +30,12 @@ class TestEndpoints(TestCase):
         app_.config['ROUTE'] = 'unit-test-route'
         return app_
 
+    def setUp(self):
+        db.create_all()
+
+    def tearDown(self):
+        db.drop_all()
+
     def test_githublistener_endpoint(self):
         """
         Test basic functionality of the GithubListener endpoint
@@ -65,7 +71,7 @@ class TestEndpoints(TestCase):
 
         # Check RabbitMQ receives the expected payload
         expected_packet = {
-            'repository': 'adsws',
+            'application': 'adsws',
             'commit': 'bcdf7771aa10d78d865c61e5336145e335e30427',
             'environment': 'sandbox',
             'author': 'vsudilov',
@@ -79,26 +85,31 @@ class TestEndpoints(TestCase):
     @mock.patch('ADSDeploy.webapp.views.GithubListener')
     def test_command_forwards_message_deploy(self, mocked_gh):
         """
-
+        Test that the commands forwards messages properly
         """
 
         mocked_gh.push_rabbitmq.return_value = None
 
-        url = url_for('commandview')
-
-        payload = {
+        params = {
             'application': 'staging',
-            'commit': '23d3f',
+            'version': '23d3f',
             'environment': 'adsws',
+            'action': 'deploy'
         }
 
-        r = self.client.post(url, data=json.dumps(payload))
+        url = url_for(
+            'commandview',
+            **params
+        )
+
+        r = self.client.get(url)
 
         self.assertStatus(r, 200)
         self.assertEqual(r.json['msg'], 'success')
 
         mocked_gh.push_rabbitmq.assert_has_calls(
-            [mock.call(payload, exchange='unit-test-exchange', route='unit-test-route')]
+            [mock.call(params, exchange='unit-test-exchange',
+                       route='unit-test-route')]
         )
 
     @mock.patch('ADSDeploy.webapp.views.GithubListener')
@@ -109,16 +120,104 @@ class TestEndpoints(TestCase):
 
         mocked_gh.push_rabbitmq.return_value = None
 
-        url = url_for('commandview')
-
-        payload = {
+        params = {
             'application': 'staging',
             'environment': 'adsws',
         }
+        url = url_for(
+            'commandview',
+            **params
+        )
 
-        r = self.client.post(url, data=json.dumps(payload))
+        r = self.client.get(url)
 
         self.assertStatus(r, 400)
+
+    def test_status_endpoint(self):
+        """
+        On request of the status, we wish to see a list of 'active' services,
+        and their last N 'versions'
+        """
+        # Load the db with the entries we wish
+        deployment1 = Deployment(
+            environment='staging',
+            application='adsws',
+            commit='commit-1',
+            deployed=False,
+            tested=True,
+            status='success'
+        )
+        deployment2 = Deployment(
+            environment='staging',
+            application='adsws',
+            commit='commit-2',
+            deployed=False,
+            tested=True,
+            status='success'
+        )
+        deployment3 = Deployment(
+            environment='staging',
+            application='adsws',
+            commit='commit-3',
+            tag='v1.0.0',
+            deployed=True,
+            tested=True,
+            status='success'
+        )
+        deployment4 = Deployment(
+            environment='staging',
+            application='graphics',
+            commit='commit-1',
+            deployed=True,
+            tested=True,
+            status='success'
+        )
+
+        deployments = [deployment1, deployment2, deployment3, deployment4]
+        db.session.add_all(deployments)
+        db.session.commit()
+
+        url = url_for('statusview')
+
+        r = self.client.get(url)
+
+        self.assertStatus(r, 200)
+
+        expected_output = {
+            'adsws': {
+                'application': 'adsws',
+                'environment': 'staging',
+                'commit': 'commit-3',
+                'tag': 'v1.0.0',
+                'version': 'v1.0.0',
+                'deployed': True,
+                'tested': True,
+                'previous_versions': ['commit-1', 'commit-2'],
+                'active': ['commit-3'],
+                'status': 'success'
+            },
+            'graphics': {
+                'application': 'graphics',
+                'environment': 'staging',
+                'commit': 'commit-1',
+                'version': 'commit-1',
+                'deployed': True,
+                'tested': True,
+                'active': ['commit-1'],
+                'status': 'success'
+            }
+        }
+
+        for output in r.json:
+            expected = expected_output[output['application']]
+
+            for key in expected:
+                self.assertEqual(
+                    expected[key],
+                    output[key],
+                    'Key "{}" expected "{}" != actual "{}"'
+                    .format(key, expected[key], output[key])
+                )
 
 
 class TestSocketIONameSpaces(TestCase):
@@ -214,45 +313,18 @@ class TestSocketIONameSpaces(TestCase):
                             key, actual_value)
             )
 
-    def test_socketio_db_dump_on_connect(self):
+    def test_socket_connect(self):
         """
         Test that there is a FlaskSocketIO emit signal when the user connects
         to the Websocket. The user should receive all the deployments.
         """
-
-        deployment_1 = Deployment(
-            application='adsws',
-            environment='staging',
-            tag='v1.0.0',
-        )
-        deployment_2 = Deployment(
-            application='graphics',
-            environment='staging',
-            tag='v0.0.9',
-        )
-        deployment_3 = Deployment(
-            application='adsws',
-            environment='production',
-            tag='v1.0.1',
-        )
-
-        deployments = [deployment_1, deployment_2, deployment_3]
-        db.session.add_all(deployments)
-        db.session.commit()
-
         tmp_io_client = socketio.test_client(self.app, namespace='/status')
         emitted = tmp_io_client.get_received('/status')[0]
 
         self.assertEqual(emitted['namespace'], '/status')
         self.assertEqual(emitted['name'], 'connect')
+        self.assertEqual(emitted['args'][0], 'connected')
 
-        for i in [0, 1, 2]:
-            expected_json = deployments[i].toJSON()
-            for key, actual_value in emitted['args'][0][i].iteritems():
-                self.assertEqual(
-                    expected_json[key],
-                    actual_value,
-                    msg='Expected, "[{}] = {}", but got "[{}] = "{}"'
-                        .format(key, expected_json[key],
-                                key, actual_value)
-                )
+        tmp_io_client.disconnect()
+        emitted = tmp_io_client.get_received('/status')[0]
+        self.assertEqual(emitted['args'][0], 'disconnected')
