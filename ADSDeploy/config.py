@@ -1,3 +1,5 @@
+import os
+
 # Connection to the database where we save orcid-claims (this database
 # serves as a running log of claims and storage of author-related
 # information). It is not consumed by others (ie. we 'push' results) 
@@ -71,13 +73,21 @@ WORKERS = {
         'subscribe': 'ads.deploy.error',
         'publish': None,
         'durable': False
-    }
+    },
+    'deploy.Restart': {
+        'concurrency': 1,
+        'subscribe': 'ads.deploy.restart',
+        'publish': 'ads.deploy.after_deploy',
+        'error': 'ads.deploy.error',
+        'durable': True
+    },
 }
 
-EB_DEPLOY_HOME = '/dvt/workspace/eb-deploy'
+# the eb-deploy by default lives on the same level as ADSDeploy
+EB_DEPLOY_HOME = os.path.abspath(os.path.join(os.path.abspath(__file__), '../eb-deploy')) 
 
 # Web Application configuration parameters
-WEBAPP_URL = '172.17.0.1:9000'
+WEBAPP_URL = '127.0.0.1:9000'
 
 # Include here any other configuration options. These will be made available
 # to workers via app.config
