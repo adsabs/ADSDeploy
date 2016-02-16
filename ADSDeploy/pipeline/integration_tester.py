@@ -131,4 +131,4 @@ class IntegrationTestWorker(RabbitMQWorker):
         self.logger.info('Publishing to queue: {}'.format(self.publish_topic))
 
         self.publish(result)
-        self.forward(result)
+        self.publish(result, topic=self.params['status'])

@@ -11,7 +11,7 @@ SQLALCHEMY_ECHO = False
 # Configuration of the pipeline; if you start 'vagrant up rabbitmq' 
 # container, the port is localhost:6672 - but for production, you 
 # want to point to the ADSImport pipeline 
-RABBITMQ_URL = 'amqp://guest:guest@127.0.0.1:6672/?' \
+RABBITMQ_URL = 'amqp://guest:guest@127.0.0.1:6672/adsdeploy?' \
                'socket_timeout=10&backpressure_detection=t'
                
 
@@ -33,10 +33,7 @@ WORKERS = {
         'concurrency': 1,
         'subscribe': 'ads.deploy.before_deploy',
         'publish': 'ads.deploy.deploy',
-        'forwarding': {
-            'exchange': EXCHANGE,
-            'publish': 'ads.deploy.status'
-        },
+        'status': 'ads.deploy.status',
         'error': 'ads.deploy.error',
         'durable': True
     },
@@ -44,10 +41,7 @@ WORKERS = {
         'concurrency': 1,
         'subscribe': 'ads.deploy.deploy',
         'publish': 'ads.deploy.test',
-        'forwarding': {
-            'exchange': EXCHANGE,
-            'publish': 'ads.deploy.status'
-        },
+        'status': 'ads.deploy.status',
         'error': 'ads.deploy.error',
         'durable': True
     },
@@ -55,10 +49,7 @@ WORKERS = {
         'concurrency': 1,
         'subscribe': 'ads.deploy.test',
         'publish': 'ads.deploy.after_deploy',
-        'forwarding': {
-            'exchange': EXCHANGE,
-            'publish': 'ads.deploy.status'
-        },
+        'status': 'ads.deploy.status',
         'error': 'ads.deploy.error',
         'durable': True
     },
@@ -71,6 +62,7 @@ WORKERS = {
     },
     'errors.ErrorHandler': {
         'subscribe': 'ads.deploy.error',
+        'status': 'ads.deploy.status',
         'publish': None,
         'durable': False
     },

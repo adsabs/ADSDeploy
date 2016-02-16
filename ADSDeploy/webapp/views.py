@@ -265,6 +265,9 @@ class CommandView(Resource):
                                          .format(key, args))
                 abort(400, 'Missing keyword: {}'.format(key))
 
+        # Currently, version is a synonym to commit
+        args['commit'] = args['version']
+
         GithubListener.push_rabbitmq(
             args,
             exchange=current_app.config.get('EXCHANGE'),
