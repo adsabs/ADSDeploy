@@ -32,7 +32,12 @@ def cmd(cmd, inputv=None, cwd=None, max_wait=None):
     if timer and timer.isAlive():
         timer.cancel()
 
-    class Object(object): pass
+    class Object(object):
+        def __str__(self):
+            return 'cmd: {0}\nout:{1}\nerr:{2}\nretcode:{3}'.format(self.cmd, 
+                                                                    self.out, 
+                                                                    self.err, 
+                                                                    self.retcode)
 
     out = Object()
     setattr(out, 'cmd', cmd)

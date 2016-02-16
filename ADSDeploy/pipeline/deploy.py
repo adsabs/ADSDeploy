@@ -81,11 +81,18 @@ class BeforeDeploy(RabbitMQWorker):
                     worker.publish(payload, topic=self.subscribe_topic)
                 return threading.Timer(30, run, args=[payload, self]).start()
         
-        # all is OK, we can proceed
-        payload['msg'] = 'OK to deploy'
+        action = payload.get('action', 'deploy')
+        
+        if action == 'deploy':
+            payload['msg'] = 'OK to deploy'
+            self.publish(payload, topic='ads.deploy.deploy')
+        elif action.startswith('restart'):
+            self.publish(payload, topic='ads.deploy.restart')
+        else:
+            raise Exception('Unknown action {0}'.format(action))
+        
 
-        self.forward(payload)
-        self.publish(payload)
+        
 
         
 class Deploy(RabbitMQWorker):
@@ -123,6 +130,41 @@ class Deploy(RabbitMQWorker):
             self.publish_to_error_queue(payload, header_frame=header_frame)
 
 
+class Restart(RabbitMQWorker):
+    """
+    This will set a new value into the RESTARTED variable. Effectively
+    causing the reload of the machine(s)
+    """
+      
+    def process_payload(self, payload, 
+        channel=None, 
+        method_frame=None, 
+        header_frame=None):
+        """It will restart the machine or tha applicaiton."""
+        
+        x = create_executioner(payload)
+        action = payload.get('action', 'restart-soft')
+        
+        payload['msg'] = '{0}-{1} {2} starts'.format(payload['environment'], 
+                                                     payload['application'],
+                                                     action)
+        self.publish(payload, topic='ads.deploy.status')
+        
+        r = None
+        if action == 'restart-soft':
+            r = x.cmd('./restart-soft {0}'.format(payload['environment']))
+        elif action == 'restart-hard':
+            r = x.cmd('./restart-hard {0}'.format(payload['environment']))
+        else:
+            self.publish_to_error_queue(payload)
+            
+        if r and r.retcode == 0:
+            self.publish(payload)
+        else:
+            payload['msg'] = str(r)
+            self.publish_to_error_queue(payload)
+        
+            
 class AfterDeploy(RabbitMQWorker):
     """After the deployment was finished, clean up the 
     AWS instances."""
