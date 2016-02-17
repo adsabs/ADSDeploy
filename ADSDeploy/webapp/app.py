@@ -7,6 +7,7 @@ import os
 
 from flask import Flask
 from flask.ext.restful import Api
+from flask.ext.cors import CORS
 from .views import GithubListener, CommandView, socketio, \
     after_insert, after_update, RabbitMQ, StatusView
 from .models import db, Deployment
@@ -27,6 +28,14 @@ def create_app(name='ADSDeploy'):
     load_config(app)
     logging.config.dictConfig(
         app.config['DEPLOY_LOGGING']
+    )
+
+    # CORS
+    CORS(
+        app,
+        resources={
+            r'/*': {'origins': app.config['CORS_ORIGINS']}
+        }
     )
 
     # Register extensions
