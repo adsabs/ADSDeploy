@@ -9,3 +9,4 @@ Flask-SocketIO==2.0
 python-engineio==0.8.7
 python-socketio==1.0
 pika==0.10.0
+flask-cors==2.1.2

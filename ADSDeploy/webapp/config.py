@@ -55,6 +55,8 @@ SQLALCHEMY_TRACK_MODIFICATIONS = False
 EXCHANGE = 'test'
 ROUTE = 'test'
 
+CORS_ORIGINS = '*'
+
 try:
     from ADSDeploy.config import RABBITMQ_URL
 except:
