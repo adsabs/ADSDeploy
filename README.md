@@ -107,7 +107,7 @@ production setup - docker way
 2. docker build --name ADSDeploy -t ADSDeploy .
 3. cd ../../.. 
 4. vim prod_config.py # edit, edit...
-4. docker run -d -v .:/vagrant/ --name ADSDeploy ADSDeploy /sbin/my_init
+4. docker run -d -v .:/vagrant/ --cap-add SYS_ADMIN --security-opt apparmor:unconfined --name ADSDeploy ADSDeploy /sbin/my_init
 
 
 Here are some useful commands:

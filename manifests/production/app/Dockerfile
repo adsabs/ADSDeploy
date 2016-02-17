@@ -40,4 +40,8 @@ RUN mkdir -p /etc/service/webapp
 ADD run_webapp /etc/service/webapp/run
 RUN chmod +x /etc/service/webapp/run
 
+RUN mkdir -p /etc/service/ebdeploy
+ADD run_ebdeploy /etc/service/ebdeploy/run
+RUN chmod +x /etc/service/ebdeploy/run
+
 CMD ["/sbin/my_init"]

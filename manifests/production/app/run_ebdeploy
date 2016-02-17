@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# purpose of this script is to run the eb-deploy
+# and mount the sandbox
+
+function run() {
+	pushd /app
+	./eb-deploy-setup.sh
+	pushd ./eb-deploy/sandbox
+	x=`ls ./sandbox/ | wc -l`
+	if [ $x -eq 0 ]; then
+		./umount-sandbox.sh
+		./mount-sandbox.sh
+	fi
+	x=`ls ./sandbox/ | wc -l`
+	if [ $x -eq 0 ]; then
+		echo "The sandbox cannot be mounted!"
+		exit 1
+	fi
+}
+
+
+while true; do
+	run
+	sleep 300
+done

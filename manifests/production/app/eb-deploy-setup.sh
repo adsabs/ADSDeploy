@@ -16,9 +16,21 @@ fi
 
 
 pushd eb-deploy
-virtualenv python
-source python/bin/activate
-pip install -r requirements.txt
+
+if [ ! -e latest-release ]; then
+  lr=''
+else
+  lr=`cat latest-release`
+fi
+
+if [ "$lr" != "`git describe`" ]; then	
+	virtualenv python
+	source python/bin/activate
+	pip install -r requirements.txt
+	echo "`git describe`" > latest-release
+else
+	source python/bin/activate
+fi
 
 
 # test we have access
