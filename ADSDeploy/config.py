@@ -45,7 +45,7 @@ WORKERS = {
         'error': 'ads.deploy.error',
         'durable': True
     },
-    'deploy.Test': {
+    'integration_tester.IntegrationTestWorker': {
         'concurrency': 1,
         'subscribe': 'ads.deploy.test',
         'publish': 'ads.deploy.after_deploy',
@@ -73,6 +73,13 @@ WORKERS = {
         'error': 'ads.deploy.error',
         'durable': True
     },
+    'db_writer.DatabaseWriterWorker': {
+        'concurrency': 1,
+        'subscribe': 'ads.deploy.status',
+        'publish': None,
+        'error': 'ads.deploy.error',
+        'durable': True
+    }
 }
 
 # the eb-deploy by default lives on the same level as ADSDeploy
