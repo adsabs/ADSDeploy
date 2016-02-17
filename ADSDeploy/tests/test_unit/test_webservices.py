@@ -26,8 +26,8 @@ class TestEndpoints(TestCase):
         app_ = app.create_app()
         app_.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite://'
         app_.config['DEPLOY_LOGGING'] = {}
-        app_.config['EXCHANGE'] = 'unit-test-exchange'
-        app_.config['ROUTE'] = 'unit-test-route'
+        app_.config['WEBAPP_EXCHANGE'] = 'unit-test-exchange'
+        app_.config['WEBAPP_ROUTE'] = 'unit-test-route'
         return app_
 
     def setUp(self):
