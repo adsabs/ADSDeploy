@@ -7,6 +7,10 @@ from logging.config import fileConfig
 import os, sys
 sys.path.append(os.getcwd())
 from ADSDeploy.models import Base
+try:
+    from ADSDeploy.local_config import SQLALCHEMY_URL
+except ImportError:
+    from ADSDeploy.config import SQLALCHEMY_URL
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -55,8 +59,12 @@ def run_migrations_online():
     and associate a connection with the context.
 
     """
+
+    alembic_config = config.get_section(config.config_ini_section)
+    alembic_config['sqlalchemy.url'] = SQLALCHEMY_URL
+
     connectable = engine_from_config(
-        config.get_section(config.config_ini_section),
+        alembic_config,
         prefix='sqlalchemy.',
         poolclass=pool.NullPool)
 
