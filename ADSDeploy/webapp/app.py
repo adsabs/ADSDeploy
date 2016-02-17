@@ -57,7 +57,7 @@ def create_app(name='ADSDeploy'):
     return app
 
 
-def load_config(app, basedir=os.path.dirname(__file__)):
+def load_config(app):
     """
     Loads configuration in the following order:
         1. config.py
@@ -67,6 +67,8 @@ def load_config(app, basedir=os.path.dirname(__file__)):
     :param basedir: base directory to load the config from
     :return: None
     """
+
+    basedir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
     app.config.from_pyfile(os.path.join(basedir, 'config.py'))
 

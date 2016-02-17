@@ -2,12 +2,12 @@
 Views
 """
 
-import hashlib
+
 import hmac
 import json
-
 import pika
-from ADSDeploy.config import RABBITMQ_URL
+import hashlib
+
 from flask import current_app, request, abort
 from flask.ext.restful import Resource
 from flask.ext.socketio import SocketIO, emit
@@ -270,8 +270,8 @@ class CommandView(Resource):
 
         GithubListener.push_rabbitmq(
             args,
-            exchange=current_app.config.get('EXCHANGE'),
-            route=current_app.config.get('ROUTE')
+            exchange=current_app.config.get('WEBAPP_EXCHANGE'),
+            route=current_app.config.get('WEBAPP_ROUTE')
         )
 
         return {'msg': 'success'}, 200
@@ -331,7 +331,7 @@ class GithubListener(Resource):
         :type payload: dict
         """
 
-        with MiniRabbit(RABBITMQ_URL) as w:
+        with MiniRabbit(current_app.config['RABBITMQ_URL']) as w:
             w.publish(
                 exchange=exchange,
                 route=route,
@@ -387,8 +387,8 @@ class GithubListener(Resource):
         # Submit to RabbitMQ worker
         GithubListener.push_rabbitmq(
             payload,
-            exchange=current_app.config.get('EXCHANGE'),
-            route=current_app.config.get('ROUTE')
+            exchange=current_app.config.get('WEBAPP_EXCHANGE'),
+            route=current_app.config.get('WEBAPP_ROUTE')
         )
 
         return {'received': '{}@{}:{}'.format(payload['application'],
