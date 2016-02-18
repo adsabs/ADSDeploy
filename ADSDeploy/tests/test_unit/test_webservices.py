@@ -195,7 +195,7 @@ class TestEndpoints(TestCase):
                 'deployed': True,
                 'tested': True,
                 'previous_versions': ['commit-1', 'commit-2'],
-                'active': ['commit-3'],
+                'active': ['v1.0.0'],
                 'status': 'success'
             },
             'graphics': {

@@ -162,7 +162,7 @@ class StatusView(Resource):
         # were to read this code, rather than the optimised version that would
         # do a single request to the database
 
-        identifiers = ['{}-{}'.format(
+        identifiers = ['{}@{}'.format(
             deployment.environment, deployment.application
         ) for deployment in deployments]
         identifiers = list(set(identifiers))
@@ -170,7 +170,7 @@ class StatusView(Resource):
         active = {}
 
         for identifier in identifiers:
-            env, app = identifier.split('-')
+            env, app = identifier.split('@')
             deployments = db.session.query(Deployment).filter(
                 Deployment.environment == env,
                 Deployment.application == app
@@ -178,6 +178,8 @@ class StatusView(Resource):
 
             if len(deployments) > 0:
                 active[identifier] = {}
+                active[identifier]['application'] = deployment.application
+                active[identifier]['environment'] = deployment.environment
                 active[identifier]['previous_versions'] = []
                 active[identifier]['active'] = []
             else:
@@ -186,7 +188,7 @@ class StatusView(Resource):
             for deployment in deployments:
                 if deployment.deployed:
                     active[identifier].update(deployment.toJSON())
-                    active[identifier]['active'].append(deployment.commit)
+                    active[identifier]['active'].append(deployment.version)
                 else:
                     active[identifier]['previous_versions']\
                         .append(deployment.commit)
