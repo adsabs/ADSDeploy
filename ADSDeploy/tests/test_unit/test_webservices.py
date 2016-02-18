@@ -71,9 +71,9 @@ class TestEndpoints(TestCase):
 
         # Check RabbitMQ receives the expected payload
         expected_packet = {
-            'application': 'adsws',
+            'environment': 'adsws',
             'commit': 'bcdf7771aa10d78d865c61e5336145e335e30427',
-            'environment': 'sandbox',
+            'application': 'sandbox',
             'author': 'vsudilov',
             'tag': None
         }

@@ -34,8 +34,8 @@ for service in list_of_services['Environments']:
 
     with app.session_scope() as session:
         deployment = Deployment(
-            environment='sandbox',
-            application=name_mapping[name],
+            application='sandbox',
+            environment=name_mapping[name],
             deployed=True,
             tested=False,
             msg='AWS bootstrapped',
@@ -53,8 +53,8 @@ for service in list_of_services['Environments']:
 
     with app.session_scope() as session:
         deployment = Deployment(
-            environment='eb-deploy',
-            application=name_mapping[name],
+            application='eb-deploy',
+            environment=name_mapping[name],
             deployed=True,
             tested=False,
             msg='AWS bootstrapped',
