@@ -148,3 +148,5 @@ WEBAPP_EXCHANGE = 'test'
 WEBAPP_ROUTE = 'test'
 
 CORS_ORIGINS = '*'
+CORS_HEADERS = ['Content-Type', 'X-BB-Api-Client-Version', 'Authorization', 'Accept']
+

@@ -34,8 +34,10 @@ def create_app(name='ADSDeploy'):
     CORS(
         app,
         resources={
-            r'/*': {'origins': app.config['CORS_ORIGINS']}
-        }
+            r'/*': {'origins': app.config['CORS_ORIGINS']},
+        },
+        allow_headers=app.config['CORS_HEADERS'],
+        supports_credentials=True
     )
 
     # Register extensions

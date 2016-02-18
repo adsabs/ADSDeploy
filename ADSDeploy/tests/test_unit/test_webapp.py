@@ -133,7 +133,7 @@ class TestStaticMethodUtilities(TestCase):
         r.data = github_payload
         c = GithubListener.parse_github_payload(r)
         self.assertEqual(
-            c['application'],
+            c['environment'],
             'adsws'
         )
         self.assertEqual(
@@ -160,7 +160,7 @@ class TestStaticMethodUtilities(TestCase):
 
         c = GithubListener.parse_github_payload(r)
         self.assertEqual(
-            c['application'],
+            c['environment'],
             'adsws'
         )
         self.assertEqual(
