@@ -5,7 +5,7 @@ Application factory
 import logging.config
 import os
 
-from flask import Flask
+from flask import Flask, send_from_directory
 from flask.ext.restful import Api
 from flask.ext.cors import CORS
 from .views import GithubListener, CommandView, socketio, \
@@ -21,7 +21,7 @@ def create_app(name='ADSDeploy'):
     :return: flask.Flask application
     """
 
-    app = Flask(name, static_folder=None)
+    app = Flask(name, static_folder='') # set the root of the project
     app.url_map.strict_slashes = False
 
     # Load config and logging
@@ -46,6 +46,12 @@ def create_app(name='ADSDeploy'):
     api.add_resource(CommandView, '/command', methods=['GET'])
     api.add_resource(RabbitMQ, '/rabbitmq', methods=['POST'])
     api.add_resource(StatusView, '/status', methods=['GET'])
+    @app.route('/static/<path:path>')
+    def root(path):
+        static_folder = app.config.get('STATIC_FOLDER', 'static')
+        if not os.path.isabs(static_folder):
+            static_folder = os.path.join(app.root_path, static_folder)
+        return send_from_directory(static_folder, path)
 
     # Register any WebSockets
     socketio.init_app(app)

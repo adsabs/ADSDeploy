@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>ADS Green Button</title>
+    <link rel="stylesheet" href="https://devui.adsabs.harvard.edu/styles/css/styles.css" />
+    <link rel="icon" type="image/png" sizes="32x32" href="https://devui.adsabs.harvard.edu/styles/img/favicon.ico">
+</head>
+
+<body>
+
+<div id="green-button-app" />
+
+
+
+<!-- I'm using javascript here because this webpage can be loaded from the ssh-tunnel (we don't have a stable URL)
+For debugging, it is better to have normal tag in the body:
+
+<script data-main="https://devui.adsabs.harvard.edu/embed.config.js"
+    data-load="http://localhost:8000/embed.green_button.js"
+    src="https://devui.adsabs.harvard.edu/libs/requirejs/require.js">
+</script>
+//-->
+<script>
+    var _mainUrl = 'https://devui.adsabs.harvard.edu';
+    var _conf = document.location.protocol + '//' + document.location.host + '/embed.green_button.js';
+    var _s = document.createElement( 'script' );
+    _s.setAttribute('data-main', _mainUrl + '/embed.config.js');
+    _s.setAttribute('data-load', document.location.protocol + '//' + document.location.host + '/static/green_button.config.js');
+    _s.setAttribute('src', _mainUrl + '/libs/requirejs/require.js');
+    document.head.appendChild(_s);
+    delete _s, _mainUrl, _conf
+</script>
+
+
+</body>
+</html>
