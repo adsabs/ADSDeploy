@@ -1,4 +1,4 @@
 #!/bin/bash
 
 pushd /app
-gunicorn -c gunicorn.conf.py wsgi:application
+exec gunicorn -c gunicorn.conf.py wsgi:application
