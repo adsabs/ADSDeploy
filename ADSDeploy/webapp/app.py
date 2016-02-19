@@ -9,7 +9,8 @@ from flask import Flask, send_from_directory
 from flask.ext.restful import Api
 from flask.ext.cors import CORS
 from .views import GithubListener, CommandView, socketio, \
-    after_insert, after_update, RabbitMQ, StatusView
+    after_insert, after_update, RabbitMQ, StatusView, \
+    ServerSideStorage
 from .models import db, Deployment
 
 
@@ -46,6 +47,7 @@ def create_app(name='ADSDeploy'):
     api.add_resource(CommandView, '/command', methods=['GET'])
     api.add_resource(RabbitMQ, '/rabbitmq', methods=['POST'])
     api.add_resource(StatusView, '/status', methods=['GET'])
+    api.add_resource(ServerSideStorage, '/store/<string:key>', methods=['GET', 'POST'])
     @app.route('/static/<path:path>')
     def root(path):
         static_folder = app.config.get('STATIC_FOLDER', 'static')

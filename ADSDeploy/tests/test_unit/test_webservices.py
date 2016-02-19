@@ -47,7 +47,25 @@ class TestEndpoints(TestCase):
 
         r = self.client.post(url)
         self.assertStatus(r, 400)  # No signature given
+        
+    
+    def test_storage_endpoint(self):
+        """
+        Test basic functionality of the ServerSideStorage endpoint
+        """
+        url = url_for('serversidestorage', key='foo')
 
+        r = self.client.get(url)
+        self.assertStatus(r, 200)
+        self.assertEqual(r.json, {})
+        
+        r = self.client.post(url, data=json.dumps({'foo': 'bar'}), content_type='application/json')
+        self.assertStatus(r, 200)
+        self.assertEqual(r.json, {u'foo': u'bar'})
+        
+        r = self.client.get(url)
+        self.assertStatus(r, 200)
+        self.assertEqual(r.json, {u'foo': u'bar'})
 
     @mock.patch('ADSDeploy.webapp.views.GithubListener.push_rabbitmq')
     @mock.patch('ADSDeploy.webapp.views.GithubListener.verify_github_signature')

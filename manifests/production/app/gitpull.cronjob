@@ -1,1 +1,1 @@
-0 * * * * bash /gitpull.sh
+*/5 * * * * bash /gitpull.sh
