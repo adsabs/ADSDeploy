@@ -12,7 +12,7 @@ from flask import current_app, request, abort
 from flask.ext.restful import Resource
 from flask.ext.socketio import SocketIO, emit
 
-from .models import db, Deployment
+from .models import db, Deployment, KeyValue
 from .exceptions import NoSignatureInfo, InvalidSignature
 
 socketio = SocketIO()
@@ -146,6 +146,7 @@ class StatusView(Resource):
     """
     Status view
     """
+    
     def get(self):
         """
         Return the list of active services. There should only be on active
@@ -215,6 +216,37 @@ class StatusView(Resource):
         #         .append(deployment.commit)
 
         return active.values(), 200
+
+
+class ServerSideStorage(Resource):
+    """
+    For whatever the widget wants to store in the KeyValue store
+    """
+    
+    def get(self, key):
+        """
+        Retrieves the key as stored in the database
+        """
+        key = 'ui:{0}'.format(key)
+        kv = db.session.query(KeyValue).filter_by(key=key).first()
+        if kv is None:
+            return {}, 200
+        else:
+            v = kv.value and kv.value or '{}'
+            return json.loads(v), 200
+        
+    def post(self, key):
+        """Saves the data in the storage"""
+        key = 'ui:{0}'.format(key)
+        payload = request.get_json(force=True)
+        out = None
+        u = db.session.query(KeyValue).filter_by(key=key).first()
+        if u is None:
+            u = KeyValue(key=key, value=json.dumps(payload))
+        db.session.add(u)
+        db.session.commit()
+        out = json.loads(u.value)
+        return out, 200
 
 
 class RabbitMQ(Resource):
