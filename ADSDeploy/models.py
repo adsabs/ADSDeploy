@@ -36,8 +36,7 @@ class Deployment(Base):
     id = Column(Integer, primary_key=True)
     application = Column(String)
     environment = Column(String)
-    commit = Column(String)
-    tag = Column(String)
+    version = Column(String)
     date_created = Column(DateTime, nullable=False, default=datetime.utcnow)
     date_last_modified = Column(
         DateTime,
@@ -50,10 +49,6 @@ class Deployment(Base):
     msg = Column(String)
     status = Column(String)
 
-    @property
-    def version(self):
-        return self.tag if self.tag else self.commit
-
     def toJSON(self):
         """
         Convert to JSON
@@ -62,8 +57,6 @@ class Deployment(Base):
         return {
             'application': self.application,
             'environment': self.environment,
-            'commit': self.commit,
-            'tag': self.tag,
             'version': self.version,
             'date_created': self.date_created.isoformat(),
             'date_last_modified': self.date_last_modified.isoformat(),
@@ -81,8 +74,6 @@ class Deployment(Base):
         _repr = [
             '\tapplication: {}'.format(self.application),
             '\tenvironment: {}'.format(self.environment),
-            '\tcommit: {}'.format(self.commit),
-            '\ttag: {}'.format(self.tag),
             '\tversion: {}'.format(self.version),
             '\tdate_created: {}'.format(self.date_created),
             '\tdate_last_modified: {}'.format(self.date_last_modified),

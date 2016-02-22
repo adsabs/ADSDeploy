@@ -192,7 +192,7 @@ class StatusView(Resource):
                     active[identifier]['active'].append(deployment.version)
                 else:
                     active[identifier]['previous_versions']\
-                        .append(deployment.commit)
+                        .append(deployment.version)
 
         # Less verbose, a little more thought required to understand
         # active = {}

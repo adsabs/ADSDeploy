@@ -71,8 +71,7 @@ class TestBeforeDeployWorker(unittest.TestCase):
         packet = {
             'environment': 'staging',
             'application': 'adsws',
-            'tag': 'v1.0.0',
-            'commit': 'gf9gd8f',
+            'version': 'v1.0.0',
         }
 
         # Override the run test returned value. This means the logic of the test
@@ -156,8 +155,7 @@ class TestBeforeDeployWorker(unittest.TestCase):
         packet = {
             'environment': 'staging',
             'application': 'adsws',
-            'tag': 'v1.0.0',
-            'commit': 'gf9gd8f',
+            'version': 'v1.0.0',
         }
 
         # Override the run test returned value. This means the logic of the test
@@ -246,8 +244,6 @@ class TestBeforeDeployWorker(unittest.TestCase):
         packet = {
             'environment': 'staging',
             'application': 'adsws',
-            'tag': 'v1.0.0',
-            'commit': 'gf9gd8f',
             'action': 'restart'
         }
 

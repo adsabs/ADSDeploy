@@ -23,8 +23,7 @@ class DatabaseWriterWorker(RabbitMQWorker):
             {
                 'application': ''
                 'environment': '',
-                'commit': '',
-                'tag': '',
+                'version': '',
                 'deployed': '',
                 'tested': '',
             }
@@ -34,8 +33,7 @@ class DatabaseWriterWorker(RabbitMQWorker):
         allowed_attr = [
             'application',
             'environment',
-            'commit',
-            'tag',
+            'version',
             'deployed',
             'tested',
             'msg'
@@ -51,7 +49,7 @@ class DatabaseWriterWorker(RabbitMQWorker):
                 deployment = session.query(Deployment).filter(
                     Deployment.application == result['application'],
                     Deployment.environment == result['environment'],
-                    Deployment.commit == result['commit']
+                    Deployment.version == result['version']
                 ).one()
             except NoResultFound:
                 deployment = Deployment()
@@ -62,7 +60,7 @@ class DatabaseWriterWorker(RabbitMQWorker):
                     'commit: "{}">'.format(
                         result['environment'],
                         result['application'],
-                        result['commit']
+                        result['version']
                     )
                 )
 
@@ -77,8 +75,7 @@ class DatabaseWriterWorker(RabbitMQWorker):
                     Deployment.application == result['application'],
                     Deployment.environment == result['environment'],
                     Deployment.deployed == True,
-                    Deployment.commit != result['commit'],
-                    Deployment.tag != result['tag']
+                    Deployment.version != result['version']
                 ).all()
 
             # Either insert or update values

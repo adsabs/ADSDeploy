@@ -41,8 +41,7 @@ class TestDatabaseWriterWorker(unittest.TestCase):
         worker_payload = {
             'application': 'staging',
             'environment': 'adsws',
-            'commit': 'latest-commit',
-            'tag': 'latest-tag',
+            'version': 'latest-commit',
             'deployed': True,
             'tested': False,
         }
@@ -54,7 +53,7 @@ class TestDatabaseWriterWorker(unittest.TestCase):
             deployment = session.query(Deployment).filter(
                 Deployment.application == 'staging',
                 Deployment.environment == 'adsws',
-                Deployment.commit == 'latest-commit'
+                Deployment.version == 'latest-commit'
             ).one()
 
             for key in worker_payload:
@@ -82,8 +81,7 @@ class TestDatabaseWriterWorker(unittest.TestCase):
             deployment = Deployment(
                 application='staging',
                 environment='adsws',
-                commit='latest-commit',
-                tag='latest-tag',
+                version='latest-commit',
                 deployed=True,
                 tested=False
             )
@@ -93,8 +91,7 @@ class TestDatabaseWriterWorker(unittest.TestCase):
         worker_payload = {
             'application': 'staging',
             'environment': 'adsws',
-            'commit': 'latest-commit',
-            'tag': 'latest-tag',
+            'version': 'latest-commit',
             'deployed': True,
             'tested': True,
         }
@@ -106,7 +103,7 @@ class TestDatabaseWriterWorker(unittest.TestCase):
             deployment = session.query(Deployment).filter(
                 Deployment.application == 'staging',
                 Deployment.environment == 'adsws',
-                Deployment.commit == 'latest-commit'
+                Deployment.version == 'latest-commit'
             ).one()
 
             self.assertTrue(deployment.tested)
@@ -126,13 +123,13 @@ class TestDatabaseWriterWorker(unittest.TestCase):
         }
         worker_payload_2 = {
             'environment': 'production',
-            'commit': 'latest-commit',
+            'version': 'latest-commit',
         }
         worker_payload_3 = {
             'application': 'graphics',
         }
         worker_payload_4 = {
-            'commit': 'latest-commit',
+            'version': 'latest-commit',
         }
         worker_payload_5 = {
             'environment': 'staging'
@@ -156,16 +153,14 @@ class TestDatabaseWriterWorker(unittest.TestCase):
         first_payload = {
             'application': 'staging',
             'environment': 'adsws',
-            'commit': 'first-commit',
-            'tag': 'first-tag',
+            'version': 'first-commit',
             'deployed': True,
             'tested': False
         }
         second_payload = {
             'application': 'staging',
             'environment': 'adsws',
-            'commit': 'second-commit',
-            'tag': 'second-tag',
+            'version': 'second-commit',
             'deployed': True,
             'tested': False
         }
@@ -175,19 +170,19 @@ class TestDatabaseWriterWorker(unittest.TestCase):
 
         with self.app.session_scope() as session:
             deployment = session.query(Deployment).filter(
-                Deployment.commit == 'first-commit'
+                Deployment.version == 'first-commit'
             ).one()
             self.assertTrue(deployment.deployed)
 
         worker.process_payload(second_payload)
         with self.app.session_scope() as session:
             deployment_2 = session.query(Deployment).filter(
-                Deployment.commit == 'second-commit'
+                Deployment.version == 'second-commit'
             ).one()
             self.assertTrue(deployment_2.deployed)
 
             deployment_1 = session.query(Deployment).filter(
-                Deployment.commit == 'first-commit'
+                Deployment.version == 'first-commit'
             ).one()
             self.assertFalse(deployment_1.deployed)
 

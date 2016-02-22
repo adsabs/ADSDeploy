@@ -70,8 +70,7 @@ class TestIntegrationTestWorker(unittest.TestCase):
         example_packet = {
             'application': 'staging',
             'service': 'adsws',
-            'tag': 'v1.0.0',
-            'commit': 'gf9gd8f',
+            'version': 'v1.0.0',
             'config': {},
             'action': 'test'
         }
@@ -125,8 +124,7 @@ class TestIntegrationTestWorker(unittest.TestCase):
         packet = {
             'application': 'adsws',
             'environment': 'staging',
-            'tag': 'v1.0.0',
-            'commit': 'gf9gd8f',
+            'version': 'v1.0.0',
         }
         expected_packet = packet.copy()
         expected_packet['tested'] = True
