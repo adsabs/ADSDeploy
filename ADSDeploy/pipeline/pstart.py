@@ -9,7 +9,7 @@ Pipeline to extract full text documents. It carries out the following:
 
 
 from ADSDeploy import app
-from ADSDeploy.pipeline import generic
+from ADSDeploy.pipeline import generic, deploy, db_writer, integration_tester, workers, errors
 from ADSDeploy.utils import setup_logging
 from copy import deepcopy
 import multiprocessing
