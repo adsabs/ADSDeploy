@@ -44,10 +44,10 @@ class TestPipeline(test_base.TestFunctional):
                                         topic='ads.deploy.before_deploy')
             worker.run()
 
-    @unittest.skipIf(
-        not os.environ.get('EB_DEPLOY_HOME'),
-        'Environment key "EB_DEPLOY_HOME" is missing.'
-    )
+    #@unittest.skipIf(
+    #    not os.environ.get('EB_DEPLOY_HOME'),
+    #    'Environment key "EB_DEPLOY_HOME" is missing.'
+    #)
     def test_deploy_worker(self):
         """
         For this, you need to have 'db' and 'rabbitmq' containers running.

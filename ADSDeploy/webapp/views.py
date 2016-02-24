@@ -389,8 +389,8 @@ class GithubListener(Resource):
 
         payload = {
             'environment': formatted_request['repository']['name'],
+            'url': formatted_request['repository']['url'],
             'commit': formatted_request['head_commit']['id'],
-            'application': 'sandbox',
             'author': formatted_request['head_commit']['author']['username'],
             'tag': formatted_request['ref'].replace('refs/tags/', '')
             if 'tags' in formatted_request['ref'] else None

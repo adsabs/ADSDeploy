@@ -4,6 +4,7 @@ from ADSDeploy.models import KeyValue
 import os
 import time
 import threading
+from engineio.payload import Payload
 
 
 def create_executioner(payload):
@@ -36,6 +37,99 @@ def is_timedout(payload, timestamp_key='timestamp'):
     return False
 
 
+class ProjectMapper:
+    """Finds the application name inside eb-deploy or from the config."""
+    def __init__(self, root, data):
+        self.root = os.path.abspath(root)
+        self.data = data
+        
+    def get(self, url):
+        """Returns environment name"""
+        if url in self.data:
+            return self.data[url]
+        name = url.split('/')[-1]
+        
+        # go through the available applications
+        # inside eb-deploy and find those that
+        # actually deploy the same project
+        recipes = []
+        for root, dirs, filez in os.walk(self.root, followlinks=True):
+            if 'python' in dirs:
+                dirs.remove('python')
+            if len(root.replace(self.root, '').split('/')) > 3:
+                while len(dirs):
+                    dirs.pop()
+            if 'repository' in filez:
+                dirz = root.split('/')
+                with open(os.path.join(root, 'repository')) as f:
+                    g_url = f.readline().strip()
+                    if url in g_url:
+                        recipes.append({'application': dirz[-2],
+                                        'environment': dirz[-1],
+                                        'path': root})
+        if len(recipes) < 0:
+            return None
+        elif len(recipes) == 1:
+            return recipes[0]
+        else:
+            return recipes
+
+
+class GithubDeploy(RabbitMQWorker):
+    """
+    A separate worker which can receive payload from the Github
+    and triggers deployment (if the information matches eb-deploy
+    recipes). It is living in a separate queue so that it can be
+    triggered manually.
+    """
+      
+    def process_payload(self, payload, 
+        channel=None, 
+        method_frame=None, 
+        header_frame=None):
+        """Checks the information and passes only what can be deployed
+        by eb-deploy recipe."""
+        
+        assert 'url' in payload
+        assert 'commit' in payload or 'tag' in payload
+        
+        url = payload['url']
+        version = payload.get('tag', payload.get('commit', 'HEAD'))
+        
+        if 'github' in url:
+            url = '/'.join(url.split('/')[-2:])
+        
+        resolver = ProjectMapper(app.config.get('EB_DEPLOY_HOME', ''), 
+                                 app.config.get('GITHUB_MAPPING', {}))
+        
+        data = resolver.get(url)
+        if not data:
+            payload['msg'] = 'Cannot find app-name for url: {0}'.format(url)
+            self.publish_to_error_queue(payload)
+            return
+        elif type(data) == list:
+            # we have to decide which application will be started
+            if 'application' in payload:
+                alternatives = filter(lambda x: x['application'] == payload['application'], data)
+                if len(alternatives) == 1:
+                    payload = alternatives[0]
+                else:
+                    raise Exception('We cant decide what to deploy, options: {0}'.format(data))
+            else:
+                alternatives = filter(lambda x: x['application'] == 'sandbox', data)
+                if len(alternatives) == 1:
+                    payload = alternatives[0]
+                else:
+                    raise Exception('We cant decide what to deploy, options: {0}'.format(data))
+                    
+        elif type(data) == dict:
+            payload = data
+        
+        payload['version'] = version
+        self.publish(payload)
+
+
+
 class BeforeDeploy(RabbitMQWorker):
     """Checks the environment before running the deployment. If the environment
     is in the 'pending' state, it will keep waiting MAX_WAIT_TIME.
@@ -59,7 +153,7 @@ class BeforeDeploy(RabbitMQWorker):
 
             return self.publish_to_error_queue(payload,
                                                header_frame=header_frame)
-        
+            
         x = create_executioner(payload)
         
         # checks we can access the AWS and that the environment in question

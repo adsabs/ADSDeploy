@@ -18,9 +18,8 @@ SQLALCHEMY_ECHO = False
 # Configuration of the pipeline; if you start 'vagrant up rabbitmq' 
 # container, the port is localhost:6672 - but for production, you 
 # want to point to the ADSImport pipeline 
-RABBITMQ_URL = 'amqp://guest:guest@127.0.0.1:6672/adsdeploy?' \
+RABBITMQ_URL = 'amqp://guest:guest@localhost:6672/?' \
                'socket_timeout=10&backpressure_detection=t'
-               
 
 # possible values: WARN, INFO, DEBUG
 LOGGING_LEVEL = 'DEBUG'
@@ -36,6 +35,14 @@ POLL_INTERVAL = 15  # per-worker poll interval (to check health) in seconds.
 EXCHANGE = 'ADSDeploy'
 
 WORKERS = {
+    'deploy.GithubDeploy': {
+        'concurrency': 1,
+        'subscribe': 'ads.deploy.github_deploy',
+        'publish': 'ads.deploy.before_deploy',
+        'status': 'ads.deploy.status',
+        'error': 'ads.deploy.error',
+        'durable': True
+    },
     'deploy.BeforeDeploy': {
         'concurrency': 1,
         'subscribe': 'ads.deploy.before_deploy',
