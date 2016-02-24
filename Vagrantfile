@@ -16,6 +16,7 @@ Vagrant.configure("2") do |config|
         d.build_dir = "manifests/development/app"
         d.has_ssh = true
         d.name = "app"
+        d.create_args = ["--add-host", "dockerhost:" + `ip route | awk '/docker0/ { print $NF }'`.strip]
       end
     end
 
@@ -26,6 +27,7 @@ Vagrant.configure("2") do |config|
         d.has_ssh = true
         d.name = "webapp"
         d.ports = ["9000:9000"]
+        d.create_args = ["--add-host", "dockerhost:" + `ip route | awk '/docker0/ { print $NF }'`.strip]
       end
     end   
     
@@ -36,6 +38,7 @@ Vagrant.configure("2") do |config|
         d.has_ssh = true
         d.name = "db"
         d.ports = ["6432:5432"]
+        d.create_args = ["--add-host", "dockerhost:" + `ip route | awk '/docker0/ { print $NF }'`.strip]
       end
     end
     
@@ -46,6 +49,7 @@ Vagrant.configure("2") do |config|
         d.has_ssh = true
         d.name = "rabbitmq"
         d.ports = ["6672:5672", "25672:15672"]
+        d.create_args = ["--add-host", "dockerhost:" + `ip route | awk '/docker0/ { print $NF }'`.strip]
       end
     end
     
@@ -61,7 +65,7 @@ Vagrant.configure("2") do |config|
         d.remains_running = true
         d.ports = ["9001:9000"]
         #d.create_args = ["-e", "AWS_ACCESS_KEY=" + ENV['AWS_ACCESS_KEY'], "-e", "AWS_SECRET_KEY=" + ENV['AWS_SECRET_KEY']]
-        d.create_args = ["--cap-add", "SYS_ADMIN", "--security-opt", "apparmor:unconfined"] 
+        d.create_args = ["--cap-add", "SYS_ADMIN", "--security-opt", "apparmor:unconfined", "--add-host", "dockerhost:" + `ip route | awk '/docker0/ { print $NF }'`.strip] 
       end
     end
 end
