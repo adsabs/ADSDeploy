@@ -6,12 +6,8 @@ if [ -e /vagrant/prod_config.py ]; then
   cp -f /vagrant/prod_config.py /app/ADSDeploy/local_config.py
 fi
 
-# on every restart check/deploy latest version
-/gitpull.sh
 
 cd /app
-
-exec gunicorn wsgi:application
 
 # start the pipeline
 python run.py -p

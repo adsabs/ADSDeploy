@@ -114,7 +114,7 @@ Here are some useful commands:
 
 - restart service
 
-	`docker exec ADSDeploy sv restart app`
+	`docker exec ADSDeploy sv restart pipeline`
 
 - tail log from one of the workers
 

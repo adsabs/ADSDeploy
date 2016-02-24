@@ -5,9 +5,6 @@ RUN apt-get update --fix-missing
 RUN apt-get install -y python-pip ipython python-dev libpq-dev git python-virtualenv gunicorn zip
 RUN pip install --upgrade pip
 
-RUN mkdir -p /etc/service/app
-ADD run /etc/service/app/run
-RUN chmod +x /etc/service/app/run
 
 # you must obtain this key and place it in
 # the folder (it is intentionally missing)
@@ -21,6 +18,8 @@ RUN bash -c "chmod -R 0600 ~/.ssh/"
 WORKDIR /app
 RUN git clone https://github.com/adsabs/ADSDeploy /app
 RUN git pull && git reset --hard HEAD
+RUN pip install -r requirements.txt
+RUN pip install -r web-requirements.txt
 
 ADD eb-deploy-setup.sh ./
 RUN chmod +x eb-deploy-setup.sh
@@ -32,9 +31,9 @@ RUN chmod +x /gitpull.sh
 RUN crontab /gitpull.cronjob
 
 
-RUN mkdir -p /etc/service/app
-ADD run /etc/service/app/run
-RUN chmod +x /etc/service/app/run
+RUN mkdir -p /etc/service/pipeline
+ADD run_pipeline /etc/service/pipeline/run
+RUN chmod +x /etc/service/pipeline/run
 
 RUN mkdir -p /etc/service/webapp
 ADD run_webapp /etc/service/webapp/run

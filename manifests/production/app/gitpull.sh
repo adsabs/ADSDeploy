@@ -4,7 +4,6 @@ git config --global user.name "anon"
 git config --global user.email "anon@anon.com"
 cd /app
 
-
 git fetch --tags
 git pull
 
@@ -30,5 +29,13 @@ alembic upgrade head
 
 echo $latest_tag > latest-production
 
-# restart the service
-sv restart app
+# copy the deployment targets and ourselves
+cp manifests/production/app/gitpull.sh $0
+cp manifests/production/app/run_pipeline /etc/service/pipeline/run
+cp manifests/production/app/run_webapp /etc/service/webapp/run
+cp manifests/production/app/run_ebdeploy /etc/service/ebdeploy/run
+
+# restart all services
+sv restart pipeline
+sv restart ebdeploy
+sv restart webapp
