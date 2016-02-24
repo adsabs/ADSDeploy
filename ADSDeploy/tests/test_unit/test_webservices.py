@@ -84,14 +84,13 @@ class TestEndpoints(TestCase):
         self.assertStatus(r, 200)
         self.assertEqual(
             r.json['received'],
-            'adsws@bcdf7771aa10d78d865c61e5336145e335e30427:sandbox'
+            u'https://github.com/adsabs/adsws@bcdf7771aa10d78d865c61e5336145e335e30427:None'
         )
 
         # Check RabbitMQ receives the expected payload
         expected_packet = {
-            'environment': 'adsws',
+            'url': 'https://github.com/adsabs/adsws',
             'commit': 'bcdf7771aa10d78d865c61e5336145e335e30427',
-            'application': 'sandbox',
             'author': 'vsudilov',
             'tag': None
         }

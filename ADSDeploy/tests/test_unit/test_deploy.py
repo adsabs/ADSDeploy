@@ -9,12 +9,15 @@ are tested in this suite. There is no communication.
 import mock
 import time
 import unittest
+import json
+import os
 
+from io import StringIO
 from mock import Mock
 from ADSDeploy import app
 from ADSDeploy.tests import test_base
 from ADSDeploy.models import Base, KeyValue
-from ADSDeploy.pipeline.deploy import Deploy, BeforeDeploy, AfterDeploy
+from ADSDeploy.pipeline.deploy import Deploy, BeforeDeploy, AfterDeploy, GithubDeploy
 
 
 class TestWorkers(test_base.TestUnit):
@@ -31,7 +34,8 @@ class TestWorkers(test_base.TestUnit):
         app.init_app({
             'SQLALCHEMY_URL': 'sqlite:///',
             'SQLALCHEMY_ECHO': False,
-            'AFTER_DEPLOY_CLEANUP_TIME': 1
+            'AFTER_DEPLOY_CLEANUP_TIME': 1,
+            'EB_DEPLOY_HOME': '/dvt/workspace2/ADSDeploy/eb-deploy'
         })
         with app.session_scope() as session:
             Base.metadata.bind = session.get_bind()
@@ -64,6 +68,74 @@ class TestWorkers(test_base.TestUnit):
             assert u.toJSON()['key'] == u'sandbox.adsws.last-used'
             assert float(u.toJSON()['value']) < time.time() + 1
             assert float(u.toJSON()['value']) > time.time() - 1
+            
+    @mock.patch('ADSDeploy.pipeline.deploy.GithubDeploy.publish')
+    
+    def test_github_deploy(self, PatchedGithubDeploy):
+        """Checks the github worker can deal with various inputs."""
+        worker = GithubDeploy()
+        
+        
+        with_sandbox = json.load(open(os.path.join(app.config.get('TEST_UNIT_DIR'), 
+                                         'stub_data/os_walk_with_sandbox.json'), 'r'))
+        without_sandbox = json.load(open(os.path.join(app.config.get('TEST_UNIT_DIR'), 
+                                         'stub_data/os_walk_without_sandbox.json'), 'r'))
+        
+        def side_effect(x):
+            if x == '/dvt/workspace2/ADSDeploy/eb-deploy/production/eb-deploy/adsws/repository':
+                return StringIO(u'https://github.com/adsabs/adsws')
+            elif x == '/dvt/workspace2/ADSDeploy/eb-deploy/sandbox/sandbox/adsws/repository':
+                return StringIO(u'https://github.com/adsabs/adsws')
+            else:
+                return StringIO(u'foo')
+            
+        patched_open = mock.mock_open()
+        patched_open.side_effect = side_effect
+        
+        with mock.patch("__builtin__.open", patched_open) as o:
+            with mock.patch('os.walk', 
+                return_value=without_sandbox) as m:
+                worker.process_payload({'url': 'adsabs/adsws', 'tag': 'v1.0.1'})
+                worker.publish.assert_called_once_with(
+                   {'environment': u'adsws', 
+                    'application': u'eb-deploy', 
+                    'version': 'v1.0.1', 
+                    'path': u'/dvt/workspace2/ADSDeploy/eb-deploy/production/eb-deploy/adsws'
+                })
+                worker.publish.reset_mock()
+                
+                worker.process_payload({'url': 'adsabs/adsws', 'tag': 'v1.0.1',
+                                        'commit': 'abcd'})
+                worker.publish.assert_called_once_with(
+                   {'environment': u'adsws', 
+                    'application': u'eb-deploy', 
+                    'version': 'v1.0.1', 
+                    'path': u'/dvt/workspace2/ADSDeploy/eb-deploy/production/eb-deploy/adsws'
+                })
+                worker.publish.reset_mock()
+    
+    
+            with mock.patch('os.walk', 
+                return_value=with_sandbox) as m:
+                worker.process_payload({'url': 'adsabs/adsws', 'tag': 'v1.0.1'})
+                worker.publish.assert_called_once_with(
+                   {'environment': u'adsws', 
+                    'application': u'sandbox', 
+                    'version': 'v1.0.1', 
+                    'path': u'/dvt/workspace2/ADSDeploy/eb-deploy/sandbox/sandbox/adsws'
+                })
+                worker.publish.reset_mock()
+                
+                worker.process_payload({'url': 'adsabs/adsws', 'tag': 'v1.0.1',
+                                        'commit': 'abcd', 'application': 'eb-deploy'})
+                worker.publish.assert_called_once_with(
+                   {'environment': u'adsws', 
+                    'application': u'eb-deploy', 
+                    'version': 'v1.0.1', 
+                    'path': u'/dvt/workspace2/ADSDeploy/eb-deploy/production/eb-deploy/adsws'
+                })
+                worker.publish.reset_mock()
+            
 
 if __name__ == '__main__':
     unittest.main()
