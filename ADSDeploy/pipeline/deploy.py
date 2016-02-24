@@ -4,7 +4,6 @@ from ADSDeploy.models import KeyValue
 import os
 import time
 import threading
-from engineio.payload import Payload
 
 
 def create_executioner(payload):
