@@ -388,7 +388,6 @@ class GithubListener(Resource):
         formatted_request = request.get_json(force=True)
 
         payload = {
-            'environment': formatted_request['repository']['name'],
             'url': formatted_request['repository']['url'],
             'commit': formatted_request['head_commit']['id'],
             'author': formatted_request['head_commit']['author']['username'],
@@ -425,9 +424,9 @@ class GithubListener(Resource):
             route=current_app.config.get('WEBAPP_ROUTE')
         )
 
-        return {'received': '{}@{}:{}'.format(payload['environment'],
+        return {'received': '{}@{}:{}'.format(payload['url'],
                                               payload['commit'],
-                                              payload['application'])}
+                                              payload['tag'])}
 
 
 def after_insert(mapper, connection, target):

@@ -133,15 +133,15 @@ class TestStaticMethodUtilities(TestCase):
         r.data = github_payload
         c = GithubListener.parse_github_payload(r)
         self.assertEqual(
-            c['environment'],
-            'adsws'
+            c['url'],
+            u'https://github.com/adsabs/adsws'
         )
         self.assertEqual(
             c['tag'],
             None
         )
 
-        for key in ['application', 'environment', 'commit', 'author', 'tag']:
+        for key in ['url', 'commit', 'author', 'tag']:
             self.assertIn(
                 key,
                 c,
@@ -160,15 +160,15 @@ class TestStaticMethodUtilities(TestCase):
 
         c = GithubListener.parse_github_payload(r)
         self.assertEqual(
-            c['environment'],
-            'adsws'
+            c['url'],
+            'https://github.com/adsabs/adsws'
         )
         self.assertEqual(
             c['tag'],
             'v1.0.0'
         )
 
-        for key in ['application', 'environment', 'commit', 'author', 'tag']:
+        for key in ['url', 'commit', 'author', 'tag']:
             self.assertIn(
                 key,
                 c,
