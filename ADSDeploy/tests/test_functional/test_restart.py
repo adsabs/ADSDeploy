@@ -69,8 +69,7 @@ class TestRestartWorker(unittest.TestCase):
         packet = {
             'environment': 'staging',
             'application': 'adsws',
-            'tag': 'v1.0.0',
-            'commit': 'gf9gd8f',
+            'version': 'v1.0.0',
         }
 
         # Override the run test returned value. This means the logic of the test
@@ -120,7 +119,7 @@ class TestRestartWorker(unittest.TestCase):
         db_worker.run()
         with self.app.session_scope() as session:
             deployment = session.query(Deployment)\
-                .filter(Deployment.commit == 'gf9gd8f').one()
+                .filter(Deployment.version == 'v1.0.0').one()
             self.assertEqual(
                 deployment.msg,
                 'staging-adsws restart-soft starts'
@@ -130,7 +129,7 @@ class TestRestartWorker(unittest.TestCase):
         db_worker.run()
         with self.app.session_scope() as session:
             deployment = session.query(Deployment)\
-                .filter(Deployment.commit == 'gf9gd8f').one()
+                .filter(Deployment.version == 'v1.0.0').one()
 
             for key in packet:
                 self.assertEqual(
@@ -161,8 +160,7 @@ class TestRestartWorker(unittest.TestCase):
         packet = {
             'environment': 'staging',
             'application': 'adsws',
-            'tag': 'v1.0.0',
-            'commit': 'gf9gd8f',
+            'version': 'v1.0.0',
         }
 
         # Override the run test returned value. This means the logic of the test
@@ -211,7 +209,7 @@ class TestRestartWorker(unittest.TestCase):
         db_worker.run()
         with self.app.session_scope() as session:
             deployment = session.query(Deployment)\
-                .filter(Deployment.commit == 'gf9gd8f').one()
+                .filter(Deployment.version == 'v1.0.0').one()
             self.assertEqual(
                 deployment.msg,
                 'staging-adsws restart-soft starts'
@@ -221,7 +219,7 @@ class TestRestartWorker(unittest.TestCase):
         db_worker.run()
         with self.app.session_scope() as session:
             deployment = session.query(Deployment)\
-                .filter(Deployment.commit == 'gf9gd8f').one()
+                .filter(Deployment.version == 'v1.0.0').one()
 
             for key in packet:
                 self.assertEqual(

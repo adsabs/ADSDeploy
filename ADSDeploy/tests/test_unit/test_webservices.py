@@ -162,7 +162,7 @@ class TestEndpoints(TestCase):
         deployment1 = Deployment(
             environment='staging',
             application='adsws',
-            commit='commit-1',
+            version='commit-1',
             deployed=False,
             tested=True,
             status='success'
@@ -170,7 +170,7 @@ class TestEndpoints(TestCase):
         deployment2 = Deployment(
             environment='staging',
             application='adsws',
-            commit='commit-2',
+            version='commit-2',
             deployed=False,
             tested=True,
             status='success'
@@ -178,8 +178,7 @@ class TestEndpoints(TestCase):
         deployment3 = Deployment(
             environment='staging',
             application='adsws',
-            commit='commit-3',
-            tag='v1.0.0',
+            version='commit-3',
             deployed=True,
             tested=True,
             status='success'
@@ -187,7 +186,7 @@ class TestEndpoints(TestCase):
         deployment4 = Deployment(
             environment='staging',
             application='graphics',
-            commit='commit-1',
+            version='commit-4',
             deployed=True,
             tested=True,
             status='success'
@@ -207,23 +206,20 @@ class TestEndpoints(TestCase):
             'adsws': {
                 'application': 'adsws',
                 'environment': 'staging',
-                'commit': 'commit-3',
-                'tag': 'v1.0.0',
-                'version': 'v1.0.0',
+                'version': 'commit-3',
                 'deployed': True,
                 'tested': True,
                 'previous_versions': ['commit-1', 'commit-2'],
-                'active': ['v1.0.0'],
+                'active': ['commit-3'],
                 'status': 'success'
             },
             'graphics': {
                 'application': 'graphics',
                 'environment': 'staging',
-                'commit': 'commit-1',
-                'version': 'commit-1',
+                'version': 'commit-4',
                 'deployed': True,
                 'tested': True,
-                'active': ['commit-1'],
+                'active': ['commit-4'],
                 'status': 'success'
             }
         }
@@ -275,7 +271,7 @@ class TestSocketIONameSpaces(TestCase):
         deployment = Deployment(
             application='adsws',
             environment='staging',
-            tag='v1.0.0',
+            version='v1.0.0',
         )
         db.session.add(deployment)
         db.session.commit()
@@ -305,7 +301,7 @@ class TestSocketIONameSpaces(TestCase):
         deployment = Deployment(
             application='adsws',
             environment='staging',
-            tag='v1.0.0',
+            version='v1.0.0',
         )
         db.session.add(deployment)
         db.session.commit()

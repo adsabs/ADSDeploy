@@ -62,23 +62,22 @@ class TestDeployWorker(unittest.TestCase):
         #
         #  {
         #    'application': 'staging',
-        #    '....': '....',
+        #    'environment': 'adsws',
+        #    'version': 'v1.0.3'
         #  }
         #
         #
         packet = {
-            'environment': 'staging',
-            'application': 'adsws',
-            'tag': 'v1.0.0',
-            'commit': 'gf9gd8f',
+            'environment': 'adsws',
+            'application': 'staging',
+            'version': 'v1.0.0'
         }
 
         # Stub the database with some early entries
         first_deployment = Deployment(
             environment=packet['environment'],
             application=packet['application'],
-            tag='v0.0.1',
-            commit='adsfadsf',
+            version='v0.0.1',
             deployed=True
         )
         with self.app.session_scope() as session:
@@ -132,7 +131,7 @@ class TestDeployWorker(unittest.TestCase):
         db_worker.run()
         with self.app.session_scope() as session:
             deployment = session.query(Deployment)\
-                .filter(Deployment.commit == 'gf9gd8f').one()
+                .filter(Deployment.version == 'v1.0.0').one()
             self.assertEqual(
                 deployment.msg,
                 'staging-adsws deployment starts'
@@ -140,13 +139,13 @@ class TestDeployWorker(unittest.TestCase):
             self.assertIsNone(deployment.deployed)
 
             deployment = session.query(Deployment)\
-                .filter(Deployment.tag == 'v0.0.1').one()
+                .filter(Deployment.version == 'v0.0.1').one()
             self.assertTrue(deployment.deployed)
 
         db_worker.run()
         with self.app.session_scope() as session:
             deployment = session.query(Deployment)\
-                .filter(Deployment.commit == 'gf9gd8f').one()
+                .filter(Deployment.version == 'v1.0.0').one()
 
             for key in packet:
                 self.assertEqual(
@@ -160,7 +159,7 @@ class TestDeployWorker(unittest.TestCase):
             )
 
             deployment = session.query(Deployment)\
-                .filter(Deployment.tag == 'v0.0.1').one()
+                .filter(Deployment.version == 'v0.0.1').one()
 
             self.assertTrue(deployment.deployed)
 
@@ -182,16 +181,14 @@ class TestDeployWorker(unittest.TestCase):
         packet = {
             'environment': 'staging',
             'application': 'adsws',
-            'tag': 'v1.0.0',
-            'commit': 'gf9gd8f',
+            'version': 'v1.0.0',
         }
 
         # Stub the database with some early entries
         first_deployment = Deployment(
             environment=packet['environment'],
             application=packet['application'],
-            tag='v0.0.1',
-            commit='adsfadsf',
+            version='v0.0.1',
             deployed=True
         )
         with self.app.session_scope() as session:
@@ -244,7 +241,7 @@ class TestDeployWorker(unittest.TestCase):
         db_worker.run()
         with self.app.session_scope() as session:
             deployment = session.query(Deployment)\
-                .filter(Deployment.commit == 'gf9gd8f').one()
+                .filter(Deployment.version == 'v1.0.0').one()
             self.assertEqual(
                 deployment.msg,
                 'staging-adsws deployment starts'
@@ -252,13 +249,13 @@ class TestDeployWorker(unittest.TestCase):
             self.assertIsNone(deployment.deployed)
 
             deployment = session.query(Deployment)\
-                .filter(Deployment.tag == 'v0.0.1').one()
+                .filter(Deployment.version == 'v0.0.1').one()
             self.assertTrue(deployment.deployed)
 
         db_worker.run()
         with self.app.session_scope() as session:
             deployment = session.query(Deployment)\
-                .filter(Deployment.commit == 'gf9gd8f').one()
+                .filter(Deployment.version == 'v1.0.0').one()
 
             for key in packet:
                 self.assertEqual(
@@ -272,5 +269,5 @@ class TestDeployWorker(unittest.TestCase):
             )
 
             deployment = session.query(Deployment)\
-                .filter(Deployment.tag == 'v0.0.1').one()
+                .filter(Deployment.version == 'v0.0.1').one()
             self.assertFalse(deployment.deployed)
