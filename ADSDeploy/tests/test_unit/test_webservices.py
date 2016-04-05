@@ -11,7 +11,7 @@ from ADSDeploy.webapp.models import db, Deployment
 from ADSDeploy.webapp.views import socketio
 from flask import url_for
 from flask.ext.testing import TestCase
-from stub_data.stub_webapp import github_payload
+from stub_data.stub_webapp import github_payload, eb_stub, eb_stub_2
 
 
 class TestEndpoints(TestCase):
@@ -152,39 +152,44 @@ class TestEndpoints(TestCase):
 
         self.assertStatus(r, 400)
 
-    def test_status_endpoint(self):
+    @mock.patch('ADSDeploy.webapp.views.boto3.client')
+    def test_status_endpoint(self, mocked_eb):
         """
         On request of the status, we wish to see a list of 'active' services,
         and their last N 'versions'
         """
+        mocked_instance = mocked_eb.return_value
+        mocked_instance.describe_applications.return_value = eb_stub
+        mocked_instance.describe_environments.return_value = eb_stub_2
+
         # Load the db with the entries we wish
         deployment1 = Deployment(
-            environment='staging',
-            application='adsws',
+            environment='adsws',
+            application='sandbox',
             version='commit-1',
             deployed=False,
             tested=True,
             status='success'
         )
         deployment2 = Deployment(
-            environment='staging',
-            application='adsws',
+            environment='adsws',
+            application='sandbox',
             version='commit-2',
             deployed=False,
             tested=True,
             status='success'
         )
         deployment3 = Deployment(
-            environment='staging',
-            application='adsws',
+            environment='adsws',
+            application='sandbox',
             version='commit-3',
             deployed=True,
             tested=True,
             status='success'
         )
         deployment4 = Deployment(
-            environment='staging',
-            application='graphics',
+            environment='graphics',
+            application='sandbox',
             version='commit-4',
             deployed=True,
             tested=True,
@@ -203,36 +208,58 @@ class TestEndpoints(TestCase):
 
         expected_output = {
             'adsws': {
-                'application': 'adsws',
-                'environment': 'staging',
-                'version': 'commit-3',
+                'application': 'sandbox',
+                'environment': 'adsws',
+                'version': 'ec04189dbaeb63abbfd2c857f3e0397360b24dbd:v1.0.0-53-g8a25240',
                 'deployed': True,
-                'tested': True,
-                'previous_versions': ['commit-1', 'commit-2'],
-                'active': ['commit-3'],
-                'status': 'success'
+                'tested': False,
+                'previous_versions': ['commit-1', 'commit-2', 'commit-3'],
+                'active': ['ec04189dbaeb63abbfd2c857f3e0397360b24dbd:v1.0.0-53-g8a25240'],
+                'status': None
             },
             'graphics': {
-                'application': 'graphics',
-                'environment': 'staging',
-                'version': 'commit-4',
-                'deployed': True,
-                'tested': True,
-                'active': ['commit-4'],
-                'status': 'success'
+                'application': 'sandbox',
+                'environment': 'graphics',
+                'deployed': False,
+                'tested': False,
+                'active': [],
+                'previous_versions': ['commit-4'],
+                'status': None
             }
         }
 
         for output in r.json:
-            expected = expected_output[output['application']]
+            if output['environment'] not in expected_output:
+                continue
+
+            expected = expected_output[output['environment']]
 
             for key in expected:
+                print key
                 self.assertEqual(
                     expected[key],
                     output[key],
                     'Key "{}" expected "{}" != actual "{}"'
                     .format(key, expected[key], output[key])
                 )
+
+        # Check that the db was updated
+        adsws = db.session.query(Deployment).filter(
+            Deployment.application == 'sandbox',
+            Deployment.environment == 'adsws',
+            Deployment.version == 'ec04189dbaeb63abbfd2c857f3e0397360b24dbd:v1.0.0-53-g8a25240',
+        ).one()
+        self.assertTrue(adsws.deployed)
+        self.assertFalse(adsws.tested)
+
+        for env in ['object', 'metrics', 'recommender', 'orcid', 'myads']:
+            env_entry = db.session.query(Deployment).filter(
+                Deployment.application == 'sandbox',
+                Deployment.environment == env,
+            ).all()
+            self.assertEqual(len(env_entry), 1)
+            self.assertTrue(env_entry[0].deployed)
+            self.assertFalse(env_entry[0].tested)
 
 
 class TestSocketIONameSpaces(TestCase):

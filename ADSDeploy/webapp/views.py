@@ -6,6 +6,7 @@ Views
 import hmac
 import json
 import pika
+import boto3
 import hashlib
 
 from flask import current_app, request, abort
@@ -157,6 +158,31 @@ class StatusView(Resource):
         there is duplication, or an issue soemwhere.
         """
 
+        client = boto3.client('elasticbeanstalk')
+
+        aws_bootstrap = {}
+        aws_identifiers = []
+
+        applications = client.describe_applications()
+        for application in applications['Applications']:
+            app_name = application['ApplicationName']
+            aws_bootstrap[app_name] = {}
+
+            environments = client.describe_environments(ApplicationName=app_name)
+            for environment in environments['Environments']:
+
+                app = environment['ApplicationName']
+                name = environment['CNAME'].split('.')[0].replace('-{0}'.format(app), '')
+                version = ':'.join(environment['VersionLabel'].split(':')[1:])
+                deployed = environment.get('Health', '') == 'Green'
+
+                aws_bootstrap[app_name][name] = {
+                    'version': version,
+                    'deployed': deployed
+                }
+
+                aws_identifiers.append('{}@{}'.format(name, app))
+
         deployments = db.session.query(Deployment).all()
 
         # This is a bit more verbose, but it is more legible if some one else
@@ -166,6 +192,7 @@ class StatusView(Resource):
         identifiers = ['{}@{}'.format(
             deployment.environment, deployment.application
         ) for deployment in deployments]
+        identifiers.extend(aws_identifiers)
         identifiers = list(set(identifiers))
 
         active = {}
@@ -177,22 +204,77 @@ class StatusView(Resource):
                 Deployment.application == app
             ).all()
 
+            print 'trying', env, app
+
             if len(deployments) > 0:
                 active[identifier] = {}
-                active[identifier]['application'] = deployment.application
-                active[identifier]['environment'] = deployment.environment
+                active[identifier]['application'] = app
+                active[identifier]['environment'] = env
                 active[identifier]['previous_versions'] = []
                 active[identifier]['active'] = []
+                active[identifier]['version'] = None
+                active[identifier]['deployed'] = False
+                active[identifier]['tested'] = False
+                active[identifier]['status'] = None
+
             else:
-                continue
+                if app not in aws_bootstrap or env not in aws_bootstrap[app]:
+                    continue
+
+                deployments = [Deployment(
+                    application=app,
+                    environment=env,
+                    deployed=aws_bootstrap[app][env]['deployed'],
+                    tested=False,
+                    msg='AWS bootstrapped',
+                    version=aws_bootstrap[app][env]['version']
+                )]
+
+                db.session.add(deployments[0])
+                db.session.commit()
+
+                active[identifier] = {}
+                active[identifier]['application'] = app
+                active[identifier]['environment'] = env
+                active[identifier]['previous_versions'] = []
+                active[identifier]['active'] = []
+                active[identifier]['version'] = None
+                active[identifier]['deployed'] = False
+                active[identifier]['tested'] = False
+                active[identifier]['status'] = None
 
             for deployment in deployments:
-                if deployment.deployed:
+
+                if deployment.environment in aws_bootstrap[deployment.application] \
+                  and deployment.version == aws_bootstrap[deployment.application][deployment.environment]['version'] \
+                  and aws_bootstrap[deployment.application][deployment.environment]['deployed']:
+
                     active[identifier].update(deployment.toJSON())
                     active[identifier]['active'].append(deployment.version)
                 else:
                     active[identifier]['previous_versions']\
                         .append(deployment.version)
+
+            if not active[identifier]['active'] \
+                    and env in aws_bootstrap[app] \
+                    and aws_bootstrap[app][env]['deployed']:
+
+                deployment = Deployment(
+                    application=app,
+                    environment=env,
+                    deployed=aws_bootstrap[app][env]['deployed'],
+                    tested=False,
+                    msg='AWS bootstrapped',
+                    version=aws_bootstrap[app][env]['version']
+                )
+
+                db.session.add(deployment)
+                db.session.commit()
+
+                active[identifier].update(deployment.toJSON())
+                active[identifier]['active'].append(aws_bootstrap[app][env]['version'])
+
+            print active[identifier], '\n'
 
         # Less verbose, a little more thought required to understand
         # active = {}

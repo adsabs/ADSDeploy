@@ -1,3 +1,6 @@
+import os
+import json
+
 github_payload = """{
   "ref": "refs/heads/master",
   "before": "c52ecc05b001eda14a389eeb76476bc5c9ac5e0b",
@@ -325,3 +328,9 @@ payload_tag = """{
     "site_admin": false
   }
 }"""
+
+with open('{}/eb_stub.json'.format(os.path.dirname(os.path.realpath(__file__))), 'r') as f:
+    eb_stub = json.load(f)
+
+with open('{}/eb_stub2.json'.format(os.path.dirname(os.path.realpath(__file__))), 'r') as f:
+    eb_stub_2 = json.load(f)
