@@ -17,6 +17,8 @@ function run() {
 		echo "The sandbox cannot be mounted!"
 		exit 1
 	fi
+	popd
+	popd
 }
 
 
