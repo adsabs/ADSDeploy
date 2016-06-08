@@ -32,6 +32,7 @@ else
 	source python/bin/activate
 fi
 
+popd
 
 # test we have access
 pushd bumblebee/bumblebee
@@ -45,3 +46,4 @@ if [ ! $? -eq 0 ]; then
 		echo "The eb scripts will not work unless you set AWS credentials."
 	fi
 fi
+popd
